@@ -1,6 +1,7 @@
 // Server only: incidents and alerts for the map, the incident page and the authority console.
 import { scenarioSchema, type Category, type Scenario } from "@/lib/ai/schemas";
-import type { GraphEdge, GraphNode } from "@/lib/intel/causal";
+import type { GraphEdge, GraphNode, RootCauseResult } from "@/lib/intel/causal";
+import type { IncidentFactor } from "@/lib/intel/incidents";
 import type { IssueFeature } from "@/lib/issues";
 import { fetchIssues } from "@/lib/issues-query";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -31,6 +32,13 @@ export type Incident = {
     pValue?: number;
     windowMinutes?: number;
     locations?: number;
+    coverage?: number;
+    factors?: IncidentFactor[];
+    explains?: RootCauseResult["explains"];
+    action?: string;
+    /** For an alert: the incident its reports belong to. */
+    relatedIncidentId?: number | null;
+    baseline?: number;
   } | null;
   scenario: Scenario | null;
   updatedAt: string;

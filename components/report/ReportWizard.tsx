@@ -40,9 +40,11 @@ type ReportWizardProps = {
   targetId: number | null;
   /** The model service is configured: voice notes can be transcribed (F9) and photos are blurred (F11). */
   mlOn: boolean;
+  /** Voice notes can be transcribed: Sarvam AI or Whisper on the model service. */
+  voiceOn: boolean;
 };
 
-export function ReportWizard({ targetId, mlOn }: ReportWizardProps) {
+export function ReportWizard({ targetId, mlOn, voiceOn }: ReportWizardProps) {
   const reduce = useReducedMotion();
   const [step, setStep] = useState<Step>(0);
   const [mode, setMode] = useState<MediaKind>("photo");
@@ -207,7 +209,7 @@ export function ReportWizard({ targetId, mlOn }: ReportWizardProps) {
                 setTranscript(text);
                 if (lang) setLanguage(lang);
               }}
-              mlOn={mlOn}
+              mlOn={voiceOn}
               onNext={() => setStep(1)}
             />
           )}

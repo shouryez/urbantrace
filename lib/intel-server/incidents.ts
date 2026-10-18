@@ -74,7 +74,15 @@ export async function refreshIncidentsAround(lat: number, lng: number, km = 3): 
       p_kind: "cluster",
       p_title: words?.title ?? inc.title,
       p_root_cause: inc.rootCause.cause,
-      p_graph: { ...inc.rootCause.graph, ranked: inc.rootCause.ranked.slice(0, 4), reasons: inc.reasons, coverage: inc.rootCause.coverage },
+      p_graph: {
+        ...inc.rootCause.graph,
+        ranked: inc.rootCause.ranked.slice(0, 5),
+        reasons: inc.reasons,
+        coverage: inc.rootCause.coverage,
+        factors: inc.factors,
+        explains: inc.rootCause.explains,
+        action: inc.rootCause.action,
+      },
       p_explanation: words?.explanation ?? null,
       p_confidence: inc.confidence,
       p_lng: inc.center.lng,
@@ -135,14 +143,32 @@ export async function refreshAlerts(): Promise<number[]> {
   }
 
   const ids: number[] = [];
+  const rain = await recentRainMm(1).catch(() => 0);
   for (const alert of detectAlerts(reportEvents)) {
-    const root = inferRootCause(alert.categories, { recentRainMm: await recentRainMm(1) });
+    const root = inferRootCause(alert.categories, { recentRainMm: rain });
+    // The incident most of these reports already belong to, so the alert can point at its root cause.
+    const { data: members } = await db.from("issues").select("incident_id").in("id", alert.issueIds).not("incident_id", "is", null);
+    const tally = new Map<number, number>();
+    for (const m of members ?? []) tally.set(m.incident_id as number, (tally.get(m.incident_id as number) ?? 0) + 1);
+    const relatedIncidentId = [...tally].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
     const { data: id, error } = await db.rpc("upsert_incident", {
       p_signature: alert.signature,
       p_kind: "alert",
       p_title: alert.title,
       p_root_cause: root.cause,
-      p_graph: { ...root.graph, issueIds: alert.issueIds, areaKm2: alert.areaKm2, pValue: alert.pValue, windowMinutes: alert.windowMinutes, locations: alert.locations },
+      p_graph: {
+        ...root.graph,
+        issueIds: alert.issueIds,
+        areaKm2: alert.areaKm2,
+        pValue: alert.pValue,
+        windowMinutes: alert.windowMinutes,
+        locations: alert.locations,
+        baseline: alert.baseline,
+        ranked: root.ranked.slice(0, 5),
+        explains: root.explains,
+        action: root.action,
+        relatedIncidentId,
+      },
       p_explanation: `${alert.reports} reports from ${alert.locations} places in ${alert.windowMinutes} minutes, far above this area's usual rate. Possible cause: ${root.label.toLowerCase()}.`,
       p_confidence: Math.min(0.99, 1 - alert.pValue),
       p_lng: alert.center.lng,

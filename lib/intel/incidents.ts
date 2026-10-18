@@ -32,10 +32,14 @@ export type DetectedIncident = {
   firstAt: string;
   lastAt: string;
   rootCause: RootCauseResult;
-  /** 0..1: size, density, causal fit and how concentrated in time the reports are. */
+  /** 0..1, the weighted sum of `factors`. */
   confidence: number;
+  /** Why the reports are taken to be one incident, each factor 0..1 with its weight and plain words. */
+  factors: IncidentFactor[];
   reasons: string[];
 };
+
+export type IncidentFactor = { key: "size" | "density" | "time" | "cause" | "coverage"; label: string; value: number; weight: number; detail: string };
 
 const DRAINAGE_FAMILY = new Set<Category>(["waterlogging", "drainage", "water_leak_sewage"]);
 
@@ -47,7 +51,11 @@ function spaceEps(a: Category, b: Category): number {
 }
 
 const DAY = 86_400_000;
-const TIME_EPS_MS = 21 * DAY;
+/** Drainage problems come and go with rain, so they must be close in time; road damage builds up slowly. */
+function timeEps(a: Category, b: Category): number {
+  if (DRAINAGE_FAMILY.has(a) && DRAINAGE_FAMILY.has(b)) return 10 * DAY;
+  return 30 * DAY;
+}
 const MIN_RELATEDNESS = 0.3;
 
 export function detectIncidents(items: ClusterInput[], opts: { recentRainMm?: number; minReports?: number } = {}): DetectedIncident[] {
@@ -62,7 +70,7 @@ export function detectIncidents(items: ClusterInput[], opts: { recentRainMm?: nu
         if (j === i) return false;
         const a = open[i]!, b = open[j]!;
         return (
-          Math.abs(time(a) - time(b)) <= TIME_EPS_MS &&
+          Math.abs(time(a) - time(b)) <= timeEps(a.category, b.category) &&
           haversineM(a, b) <= spaceEps(a.category, b.category) &&
           relatedness(a.category, b.category) >= MIN_RELATEDNESS
         );
@@ -102,10 +110,22 @@ export function detectIncidents(items: ClusterInput[], opts: { recentRainMm?: nu
     const spanH = (times.at(-1)! - times[0]!) / 3_600_000;
     const root = inferRootCause(categories, { recentRainMm: opts.recentRainMm });
 
-    const size = 1 - Math.exp(-reportCount / 8);
-    const density = Math.min(1, reportCount / Math.max(1, (Math.PI * (radiusM / 1000) ** 2) * 40));
-    const burst = spanH <= 24 ? 1 : spanH <= 24 * 7 ? 0.7 : 0.45;
-    const confidence = Math.min(0.97, 0.35 * size + 0.15 * density + 0.35 * root.confidence + 0.15 * burst);
+    const areaKm2 = Math.PI * (radiusM / 1000) ** 2;
+    const perKm2 = reportCount / Math.max(0.01, areaKm2);
+    const factors: IncidentFactor[] = [
+      { key: "size", label: "Enough reports", value: 1 - Math.exp(-reportCount / 8), weight: 0.25, detail: `${reportCount} reports about ${members.length} problems` },
+      { key: "density", label: "Packed close together", value: Math.min(1, perKm2 / 40), weight: 0.15, detail: `${Math.round(perKm2)} reports per km² within ${Math.round(radiusM)} m` },
+      {
+        key: "time",
+        label: "Close in time",
+        value: spanH <= 24 ? 1 : spanH <= 24 * 7 ? 0.75 : spanH <= 24 * 21 ? 0.5 : 0.3,
+        weight: 0.15,
+        detail: spanH < 48 ? `all within ${Math.max(1, Math.round(spanH))} hours` : `over ${Math.round(spanH / 24)} days`,
+      },
+      { key: "cause", label: "One cause fits", value: root.confidence, weight: 0.3, detail: `${root.label}: ${Math.round(root.confidence * 100)}% likely among ${root.ranked.length} causes` },
+      { key: "coverage", label: "Cause explains the problems", value: root.coverage, weight: 0.15, detail: `accounts for ${Math.round(root.coverage * 100)}% of the reports` },
+    ];
+    const confidence = Math.min(0.97, factors.reduce((s, f) => s + f.value * f.weight, 0));
 
     const reasons = [
       `${reportCount} reports within ${Math.round(radiusM)} m`,
@@ -126,6 +146,7 @@ export function detectIncidents(items: ClusterInput[], opts: { recentRainMm?: nu
       lastAt: new Date(times.at(-1)!).toISOString(),
       rootCause: root,
       confidence,
+      factors,
       reasons,
     });
   }
@@ -150,6 +171,8 @@ export type DetectedAlert = {
   categories: Partial<Record<Category, number>>;
   /** Probability of seeing this many reports by chance at the area's normal rate. */
   pValue: number;
+  /** Reports the area normally gets in a window this long (the Poisson rate). */
+  baseline: number;
   firstAt: string;
   lastAt: string;
 };
@@ -225,6 +248,7 @@ export function detectAlerts(
       issueIds: [...new Set(group.map((e) => e.issueId))],
       categories,
       pValue,
+      baseline: Math.round(lambda * 100) / 100,
       firstAt: new Date(times[0]!).toISOString(),
       lastAt: new Date(times.at(-1)!).toISOString(),
     });

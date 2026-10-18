@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ReportWizard } from "@/components/report/ReportWizard";
 import { mlEnabled } from "@/lib/ml";
+import { sarvamEnabled } from "@/lib/sarvam";
 
 export const metadata: Metadata = {
   title: "Report an issue · UrbanTrace",
@@ -10,7 +11,7 @@ export const metadata: Metadata = {
 /** "I see this too" links here as /report?target=<issue id>. */
 async function Wizard({ searchParams }: { searchParams: PageProps<"/report">["searchParams"] }) {
   const target = Number((await searchParams).target);
-  return <ReportWizard targetId={Number.isInteger(target) && target > 0 ? target : null} mlOn={mlEnabled()} />;
+  return <ReportWizard targetId={Number.isInteger(target) && target > 0 ? target : null} mlOn={mlEnabled()} voiceOn={sarvamEnabled() || mlEnabled()} />;
 }
 
 export default function ReportPage({ searchParams }: PageProps<"/report">) {
