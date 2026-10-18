@@ -201,3 +201,19 @@ describe("journey and verification", () => {
     assert.equal(scoreVerification({ ...base, photoTakenAt: new Date(Date.now() - 3 * 86_400_000) }).outcome, "failed");
   });
 });
+
+describe("accessible routes", () => {
+  test("the route that avoids a blocked footpath is recommended", async () => {
+    const { rankRoutes, pointToSegmentM } = await import("@/lib/intel/route");
+    assert.ok(Math.abs(pointToSegmentM({ lat: 12.9, lng: 77.6001 }, { lat: 12.9, lng: 77.6 }, { lat: 12.901, lng: 77.6 }) - 10.8) < 1);
+    const direct: [number, number][] = [[77.6, 12.9], [77.6, 12.91]];
+    const detour: [number, number][] = [[77.6, 12.9], [77.603, 12.905], [77.6, 12.91]];
+    const ranked = rankRoutes(
+      [{ coordinates: direct, distanceM: 1100, durationS: 800 }, { coordinates: detour, distanceM: 1300, durationS: 950 }],
+      [{ id: 1, lat: 12.905, lng: 77.6, weight: 3, label: "Footpath damage", accessibility: "major" }],
+    );
+    assert.equal(ranked[0]!.distanceM, 1300);
+    assert.equal(ranked[0]!.recommended, true);
+    assert.equal(ranked[1]!.obstacles.length, 1);
+  });
+});
