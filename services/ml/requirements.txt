@@ -1,0 +1,12 @@
+# UrbanTrace stretch model service (F9, F11, F13). All open source; see the licence notes in app.py.
+fastapi==0.141.1
+uvicorn==0.53.0
+python-multipart==0.0.32
+numpy==2.5.3
+onnxruntime==1.30.0
+opencv-python-headless==5.0.0.93
+faster-whisper==1.2.1
+# faster-whisper 1.2.1 passes an argument that PyAV 18+ removed
+av==17.1.0
+open-image-models==0.6.0
+huggingface_hub==1.33.0
