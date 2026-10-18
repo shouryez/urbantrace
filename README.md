@@ -2,7 +2,7 @@
 
 **Every pothole, traced to its fix.** Snap it. We route it. It closes only with proof.
 
-UrbanTrace is an open source web app that traces a civic issue in Bengaluru from a photo report to a verified fix, using an open weight AI model we host ourselves. A resident snaps a photo of a pothole or a garbage pile. The model reads it, the app merges it with nearby reports of the same problem, routes it to the right authority with a drafted complaint, and closes it only when an after photo proves the repair.
+UrbanTrace is an open source civic intelligence app for Bengaluru. A resident reports with a photo, a ten second video or just their voice, in any language. Gemma reads the evidence and finds every problem in it, the app merges it with nearby reports of the same problem, works out the likely root cause across many reports, ranks it with an explainable priority, routes it to the right department with a compiled complaint, and closes it only when an after photo proves the repair.
 
 Built by team **Code Not Found** for MLH Hacktoberfest Hack Day, Best Open-Source AI Project: Shourya Pratap Singh Chouhan, Daksh Bhatt, Shreya Singh Chouhan.
 
@@ -10,9 +10,10 @@ Built by team **Code Not Found** for MLH Hacktoberfest Hack Day, Best Open-Sourc
 
 ## Why it is different
 
-- **Open and self hostable.** No paid AI API. The model runs in Ollama on our own machine, so any residents' association, campus or ward office can run UrbanTrace, and photos are never sent to an AI vendor.
-- **Merged reports.** Forty reports of one pothole become one issue with forty backers, not forty small complaints.
-- **Proof of fix.** An issue closes only when the model confirms that an after photo, taken within 50 m, shows the repair.
+- **Open weights, self hostable.** Every model is open weight. Gemma 4 runs in Ollama on our own machine; for speed the demo can use hosted Gemma 4 26B through Google AI Studio and falls back to the local model when that is unavailable. Any residents' association, campus or ward office can run UrbanTrace fully offline.
+- **Root causes, not tickets.** Forty reports of one pothole become one issue with forty backers, and a flooded road, potholes and garbage near one blocked drain become one incident with its likely cause.
+- **Explainable, not popular.** Priority is a transparent score of safety, people affected, accessibility, recurrence, evidence and rain, never upvotes alone.
+- **Proof of fix.** An issue closes only when the after photo passes every check: same place, same scene, the problem gone, nothing new.
 
 ## Features
 
@@ -33,7 +34,32 @@ Built by team **Code Not Found** for MLH Hacktoberfest Hack Day, Best Open-Sourc
 | F13 | Pothole depth | A rough shallow, moderate or deep class from relative depth, shown as estimated |
 | F14 | Open dataset | Opt in photos, blurred, exported as a Hugging Face dataset under CC BY 4.0 |
 
-On the roadmap: F15 email and SMS alerts on status changes, F16 official grievance portals where they publish an API, F17 rainfall data to raise the priority of waterlogging.
+### Civic intelligence
+
+| Feature | What it does |
+| --- | --- |
+| AI civic investigator | A ten second video becomes one structured case: frames are read together with the voice note into a primary issue, secondary issues, severity, risks and the frames that prove it |
+| Just talk | Report by voice alone; the model files the case from the transcript, with a summary in the reporter's language |
+| Root cause graph | A civic causal graph (blocked drain → waterlogging → potholes, and so on) with noisy-OR inference picks the likely root cause of a cluster, with alternatives and reasons |
+| Incident detection | Reports close in space and time are clustered (ST-DBSCAN with causal relatedness) into one incident |
+| Emergency alerts | A burst of reports far above an area's usual rate (Poisson tail) raises a live civic alert on the map |
+| Crowd truth | Confidence per fact (severity, location, recurrence, duration, cause) from independent reporters, media and repair history |
+| Dynamic priority | An explainable 0 to 100 score with every factor shown; it updates as reports, rain and waiting time change |
+| AI assignment | Department, sub-department, work type, crew, equipment and urgency from the case |
+| Where does my complaint go | The journey from you to AI triage, department, zone officer, field team, site visit, repair, AI verification and your confirmation |
+| Civic time machine | The history of one place: reports by month, rain, verified repairs and how long each lasted; a time slider on the city map |
+| Recurrence detector | A problem that returns after a verified repair is flagged with how long the fix lasted |
+| Repair history | Documented repairs and recurring problems per road segment in the authority console, without attributing fault |
+| Multimodal proof of fix | Distance, capture time, scene similarity, the model's verdict and new problems, scored as verified, partial or failed; reporters confirm |
+| What if we don't fix it | A model-traced chain of likely consequences from the facts of the case |
+| Complaint compiler | One case file and a formal letter from every report, photo, frame and transcript |
+| What's wrong around me | A plain words report on the civic health of the area around you |
+| Accessibility mode | Accessibility hazards are rated in every report; a walking route planner avoids reported obstacles |
+| Weather and civic reports | Rainfall from Open-Meteo against water and road reports: before and after heavy rain, and the correlation |
+| Civic impact | What your reports changed: verified fixes, hazards reported, recurring problems surfaced. No points or rankings |
+| Authority console | Officials work a queue ranked by priority and move cases stage by stage |
+
+On the roadmap: email and SMS alerts on status changes, and official grievance portals where they publish an API.
 
 | | |
 | --- | --- |
@@ -45,7 +71,7 @@ The map, dashboard and issue screenshots show seeded demo data (`npm run seed:de
 
 ## Architecture
 
-The browser never talks to a model. Every AI call goes from a Next.js route handler to Ollama on the same machine, and every reply is checked against a Zod schema, retried once, then handed to the user to fill in by hand. Supabase stores the results and pushes live updates to every open map. All writes go through the server with the service role key; the browser's anon key can only read.
+The browser never talks to a model. Every AI call goes from a Next.js route handler to Gemma (hosted Gemma 4 26B when `GOOGLE_API_KEY` is set, otherwise Ollama on the same machine, which is also the fallback), and every reply is checked against a Zod schema, retried once, then handed to the user to fill in by hand. Supabase stores the results and pushes live updates to every open map. All writes go through the server with the service role key; the browser's anon key can only read.
 
 ```mermaid
 flowchart LR
@@ -57,6 +83,7 @@ flowchart LR
     next -->|"JSON schema calls"| ollama
     next -.->|"stretch: /transcribe /blur /depth"| ml
   end
+  next -.->|"optional: hosted Gemma 4 26B, falls back to Ollama"| google["Google AI Studio"]
   next -->|"service role writes"| supa["Supabase<br/>Postgres, PostGIS, pgvector, Storage, Realtime"]
   supa -->|"Realtime, anon reads"| phone
   next -->|"reverse geocode, 1 req/s, cached"| osm["OpenStreetMap<br/>tiles, Nominatim"]
@@ -75,12 +102,21 @@ Reporting is two calls on purpose: `analyze` cleans, blurs and stores the photo,
 | `POST /api/issues/[id]/verify` | After photo, GPS check, model verdict, status change | F7 |
 | `POST /api/voice` | Voice note to text | F9 |
 | `GET /api/stats` | City wide counters | F10 |
+| `GET /api/incidents`, `/api/incidents/[id]` | Incidents and alerts with their root cause graph | Incidents, alerts |
+| `POST /api/issues/[id]/scenario`, `/api/incidents/[id]/scenario` | What happens if it is not fixed | Scenario |
+| `POST /api/issues/[id]/confirm`, `/api/issues/[id]/stage` | Reporter confirmation; authority stage changes | Proof of fix, journey |
+| `GET /api/history`, `/api/zones/[cell]`, `/api/impact` | Place history, area report, a device's impact | Time machine, around me, impact |
+| `GET /api/places`, `/api/route`, `/api/weather` | Place search, accessible walking routes, rain and reports | Accessibility, weather |
+| `POST /api/intel/refresh`, `/api/authority` | Recompute priorities, incidents and alerts; authority sign in | Authority console |
+
+The intelligence algorithms are plain TypeScript in `lib/intel/` (causal graph, clustering, alerts, priority, evidence, assignment, timeline, rain, journey, verification, routes) with unit tests in `tests/intel.test.ts`.
 
 ## Models and licences
 
 | Model | Job | Licence |
 | --- | --- | --- |
-| Gemma 4 E4B (`gemma4:e4b`), through Ollama | Read the photo, draft the letter, verify the fix | Apache 2.0 |
+| Gemma 4 26B A4B (`gemma-4-26b-a4b-it`), hosted through Google AI Studio (optional) | Every model call when `GOOGLE_API_KEY` is set | Apache 2.0 |
+| Gemma 4 E4B (`gemma4:e4b`), through Ollama | Read the evidence, explain incidents, compile the case, verify the fix; the local fallback | Apache 2.0 |
 | Gemma 4 E2B (`gemma4:e2b`) | Fallback if E4B is too slow | Apache 2.0 |
 | Qwen3-VL 8B Instruct (`qwen3-vl:8b-instruct`) | Benchmarked against Gemma; works as a drop in through `VISION_MODEL` | Apache 2.0 |
 | nomic-embed-text | Summary embeddings for duplicate matching | Apache 2.0 |
@@ -89,7 +125,7 @@ Reporting is two calls on purpose: `analyze` cleans, blurs and stores the photo,
 | YOLOv9-t plate detector (open-image-models) | Number plate detection for blurring | MIT |
 | Depth Anything V2 Small (ONNX) | Relative depth for the pothole depth class | Apache 2.0 |
 
-Main libraries: Next.js (MIT), React (MIT), Tailwind CSS (MIT), Motion (MIT), Lenis (MIT), Leaflet (BSD 2-Clause), leaflet.markercluster (MIT), Recharts (MIT), Lucide (ISC), Zod (MIT), sharp (Apache 2.0), Supabase JS (MIT), FastAPI (MIT), ONNX Runtime (MIT), OpenCV (Apache 2.0). Map data © OpenStreetMap contributors (ODbL).
+Main libraries: Next.js (MIT), React (MIT), Tailwind CSS (MIT), Motion (MIT), Lenis (MIT), MapLibre GL JS (BSD 3-Clause), deck.gl (MIT), Leaflet (BSD 2-Clause), Recharts (MIT), Lucide (ISC), Zod (MIT), sharp (Apache 2.0), exif-reader (MIT), Supabase JS (MIT), FastAPI (MIT), ONNX Runtime (MIT), OpenCV (Apache 2.0). Map data © OpenStreetMap contributors (ODbL), tiles by OpenFreeMap, walking routes by FOSSGIS OSRM, weather by Open-Meteo (CC BY 4.0).
 
 ## Benchmark
 
@@ -125,7 +161,8 @@ You need Node.js 24 or newer (the scripts and tests run TypeScript directly), [O
 ```bash
 # 1. App
 npm install
-cp .env.example .env.local        # then fill in the Supabase keys and a contact email for Nominatim
+cp .env.example .env.local        # then fill in the Supabase keys, a contact email for Nominatim, AUTHORITY_PASSCODE,
+                                  # and optionally GOOGLE_API_KEY for hosted Gemma 4 26B
 
 # 2. Models
 ollama pull gemma4:e4b            # main model
@@ -133,9 +170,9 @@ ollama pull gemma4:e2b            # fallback
 ollama pull nomic-embed-text      # F12
 ollama pull qwen3-vl:8b-instruct  # benchmark only
 
-# 3. Database: in the Supabase SQL editor, run supabase/migrations/0001 to 0006 in order.
+# 3. Database: in the Supabase SQL editor, run supabase/migrations/0001 to 0007 in order.
 #    They enable PostGIS and pgvector, create the tables with row level security, the photos
-#    bucket, the merge function and the read functions and views used by the server.
+#    bucket, the merge function, the read functions and views, and the intelligence tables.
 
 # 4. Stretch model service (F9, F11, F13). Optional: leave ML_SERVICE_URL empty to run without it.
 cd services/ml
@@ -157,10 +194,10 @@ The first photo after starting Ollama loads the model, which can take a couple o
 
 | Command | Does |
 | --- | --- |
-| `npm test` | Unit tests: category to agency, the verification pass rule, the Zod schemas against bad model output |
+| `npm test` | Unit tests: routing, the verification rules, the Zod schemas against bad model output, and the intelligence algorithms |
 | `npm run test:db` | Database tests against `submit_report` on the Supabase project in `.env.local`; they clean up after themselves |
 | `npm run benchmark` | The model benchmark above |
-| `npm run seed:demo` | About 25 demo issues across Bengaluru from the benchmark photos, in mixed statuses; `-- --clear` removes them. They are seeded, and we say so in the pitch |
+| `npm run seed:demo` | About 25 demo issues across Bengaluru from the benchmark photos in mixed statuses, plus a drainage incident in Koramangala, a flooding alert in Bellandur and a recurring pothole in HSR Layout; `-- --clear` removes them. They are seeded, and we say so in the pitch |
 | `npm run seed:boundaries -- --corporations <file> --wards <file>` | Load corporation and ward boundaries from GeoJSON; until then users pick their corporation from a list |
 | `npm run export-dataset` | Export the consented, blurred photos as a Hugging Face image folder in `dataset/` |
 | `npm run typecheck`, `npm run lint` | TypeScript and ESLint |
