@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera } from "lucide-react";
+import { Accessibility, Camera, Languages, ScanSearch } from "lucide-react";
 import type { ChangeEvent, ReactNode } from "react";
 import { Button, buttonClasses } from "@/components/ui/Button";
 
@@ -12,6 +12,12 @@ type CaptureProps = {
   /** F9: the optional voice note, shown under the photo preview. */
   voiceNote: ReactNode;
 };
+
+const HINTS = [
+  { Icon: ScanSearch, label: "Finds every problem in the scene" },
+  { Icon: Accessibility, label: "Flags accessibility hazards" },
+  { Icon: Languages, label: "Speak in any language" },
+];
 
 export function Capture({ photoUrl, error, onCapture, onNext, voiceNote }: CaptureProps) {
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -27,16 +33,24 @@ export function Capture({ photoUrl, error, onCapture, onNext, voiceNote }: Captu
 
   if (!photoUrl) {
     return (
-      <div className="flex flex-col items-center gap-6 py-10 text-center">
-        <h2 className="font-display text-[32px] leading-tight font-semibold">Snap the problem</h2>
-        <p className="max-w-sm text-mist-300">A pothole, a garbage pile, a dead streetlight. One clear photo is enough.</p>
-        <label
-          className="flex size-36 cursor-pointer flex-col items-center justify-center gap-2 rounded-full bg-marking-400 text-asphalt-950 transition-transform duration-150 ease-out focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-marking-400 active:scale-[0.97]"
-        >
-          <Camera size={40} strokeWidth={1.75} aria-hidden />
-          <span className="text-sm font-medium">Take photo</span>
+      <div className="flex flex-col items-center gap-7 py-8 text-center">
+        <h2 className="font-display text-[36px] leading-[1.05] font-bold tracking-tight md:text-[44px]">
+          <span className="text-aurora">Snap the</span> <span className="font-serif font-normal italic">problem</span>
+        </h2>
+        <p className="max-w-sm text-fog-300">A pothole, a garbage pile, a dead streetlight. One clear photo is enough; the AI does the paperwork.</p>
+        <label className="relative my-6 flex size-40 cursor-pointer flex-col items-center justify-center gap-2 rounded-full bg-signal text-ink-950 shadow-[0_18px_60px_-12px_#d9ff4a] transition-transform duration-150 ease-out focus-within:outline-2 focus-within:outline-offset-4 focus-within:outline-signal hover:-translate-y-0.5 active:scale-[0.97]">
+          <span aria-hidden className="pulse-ring absolute inset-0 rounded-full border-2 border-signal" />
+          <Camera size={42} strokeWidth={1.75} aria-hidden />
+          <span className="text-sm font-extrabold">Take photo</span>
           {fileInput}
         </label>
+        <ul className="flex flex-wrap justify-center gap-2 text-xs text-fog-200">
+          {HINTS.map(({ Icon, label }) => (
+            <li key={label} className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
+              <Icon size={13} aria-hidden /> {label}
+            </li>
+          ))}
+        </ul>
         {error && (
           <p role="alert" className="text-sm text-chalk-50">
             {error}
