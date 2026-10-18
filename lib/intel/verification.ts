@@ -43,7 +43,8 @@ export function scoreVerification(v: VerificationInput): VerificationResult {
   if (segOk) score += W.segment;
 
   const sim = v.sceneSimilarity;
-  const sceneOk = v.modelSameLocation && (sim === null || sim >= 0.35);
+  // Measured on the bench photos: different scenes score 0.00 to 0.04, the same scene 0.24 to 0.95.
+  const sceneOk = v.modelSameLocation && (sim === null || sim >= 0.15);
   checks.push({ key: "scene", label: "Same scene", state: sceneOk ? "pass" : v.modelSameLocation ? "warn" : "fail", detail: `${v.modelSameLocation ? "Model recognises the place" : "Model does not recognise the place"}${sim === null ? "" : `, layout similarity ${Math.round(sim * 100)}%`}` });
   if (sceneOk) score += W.scene * (sim === null ? 0.85 : Math.min(1, 0.6 + sim * 0.5));
 
@@ -67,7 +68,7 @@ export function scoreVerification(v: VerificationInput): VerificationResult {
   }
 
   score = Math.round(Math.max(0, Math.min(100, score)));
-  const hardFail = !locOk || !v.modelResolved || tsState === "fail" || (!v.modelSameLocation && (sim ?? 0) < 0.35);
+  const hardFail = !locOk || !v.modelResolved || tsState === "fail" || (!v.modelSameLocation && (sim ?? 0) < 0.15);
   const outcome: VerificationResult["outcome"] = hardFail
     ? "failed"
     : v.residualIssues.length || score < 75 || v.modelConfidence === "low"

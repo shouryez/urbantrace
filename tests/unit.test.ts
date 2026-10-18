@@ -27,7 +27,7 @@ describe("routing: category to agency (F5)", () => {
 });
 
 describe("verification pass rule (F7)", () => {
-  const fixed: FixVerdict = { same_location: true, issue_resolved: true, confidence: "high", reason: "Patched" };
+  const fixed: FixVerdict = { same_location: true, issue_resolved: true, confidence: "high", reason: "Patched", same_road: true, residual_issues: [] };
 
   test("passes within 50 m when the model confirms the fix", () => {
     assert.equal(passesVerification(12, fixed), true);

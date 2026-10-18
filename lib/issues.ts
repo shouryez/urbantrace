@@ -37,6 +37,14 @@ export type IssueProperties = {
   backerCount: number;
   createdAt: string;
   photoUrl: string | null;
+  verifiedAt: string | null;
+  accessibility: "none" | "partial" | "major";
+  /** 0..100 from lib/intel/priority.ts; null until computed. */
+  priority: number | null;
+  stage: string;
+  incidentId: number | null;
+  recurrenceOf: number | null;
+  segmentKey: string | null;
 };
 
 export type IssueFeature = {

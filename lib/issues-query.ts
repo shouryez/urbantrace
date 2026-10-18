@@ -16,6 +16,13 @@ type IssueRow = {
   backer_count: number;
   created_at: string;
   photo_path: string | null;
+  verified_at: string | null;
+  accessibility: "none" | "partial" | "major" | null;
+  priority: number | null;
+  stage: string | null;
+  incident_id: number | null;
+  recurrence_of: number | null;
+  segment_key: string | null;
 };
 
 /** Greater Bengaluru, for reads that are not tied to a map view. */
@@ -25,7 +32,7 @@ export const CITY_BBOX = [77.3, 12.7, 77.9, 13.3] as const;
 export async function fetchIssues(
   [minLng, minLat, maxLng, maxLat]: readonly [number, number, number, number],
   { status, category, corporation }: IssueFilters = {},
-  limit = 500,
+  limit = 1000,
 ): Promise<IssueFeature[]> {
   const { data, error } = await supabaseAdmin().rpc("issues_in_bbox", {
     p_min_lng: minLng,
@@ -53,6 +60,13 @@ export async function fetchIssues(
       backerCount: r.backer_count,
       createdAt: r.created_at,
       photoUrl: r.photo_path ? photoPublicUrl(r.photo_path) : null,
+      verifiedAt: r.verified_at ?? null,
+      accessibility: r.accessibility ?? "none",
+      priority: r.priority ?? null,
+      stage: r.stage ?? "reported",
+      incidentId: r.incident_id ?? null,
+      recurrenceOf: r.recurrence_of ?? null,
+      segmentKey: r.segment_key ?? null,
     },
   }));
 }
