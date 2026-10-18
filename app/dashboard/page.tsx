@@ -9,6 +9,7 @@ import { NODE_LABELS, type CausalNode } from "@/lib/intel/causal";
 import { rainImpact } from "@/lib/intel/rain";
 import { listIncidents } from "@/lib/incidents-query";
 import { CITY_BBOX, fetchIssues } from "@/lib/issues-query";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { rainByDay } from "@/lib/weather";
 
 export const metadata: Metadata = {
@@ -64,14 +65,10 @@ async function DashboardData() {
 export default function DashboardPage() {
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 py-8 md:px-6">
-      <header className="flex flex-col gap-2">
-        <p className="kicker text-mist-300">Dashboard</p>
-        <h1 className="font-display text-[32px] leading-tight font-semibold">How each corporation is doing</h1>
-        <p className="max-w-2xl text-mist-300">
-          Open, fix claimed and verified issues per city corporation, the median time from the first report to a verified fix, and what rain and
-          incidents are doing to the city.
-        </p>
-      </header>
+      <PageHeader kicker="Dashboard" title="How the city is" accent="doing">
+        Open, fix claimed and verified issues per city corporation, the median time from the first report to a verified fix, and what rain and incidents
+        are doing to the city.
+      </PageHeader>
       <Suspense fallback={<div className="skeleton h-96 rounded-card" />}>
         <DashboardData />
       </Suspense>

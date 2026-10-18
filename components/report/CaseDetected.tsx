@@ -25,7 +25,7 @@ type Props = {
 export function CaseDetected({ result, included, onToggle }: Props) {
   const c: CaseReading | null = result.case;
   return (
-    <div className="flex flex-col gap-4 rounded-card border border-white/8 bg-ink-850 p-5">
+    <div className="flex flex-col gap-4 rounded-card panel p-5">
       <div className="flex items-center justify-between gap-3">
         <p className="kicker text-fog-300">Civic case</p>
         <span className="num text-xs text-fog-500">

@@ -90,7 +90,7 @@ export function VoiceNote({ value, onChange }: VoiceNoteProps) {
   const stop = () => recorder.current?.state === "recording" && recorder.current.stop();
 
   return (
-    <div className="flex flex-col gap-3 rounded-card border border-white/6 bg-asphalt-800 p-4">
+    <div className="flex flex-col gap-3 rounded-card panel p-4">
       <div className="flex flex-wrap items-center gap-3">
         {state.kind === "recording" ? (
           <Button variant="secondary" onClick={stop}>

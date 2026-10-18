@@ -138,7 +138,7 @@ export function VerifyFlow({ issueId, beforeUrl, offerConsent }: VerifyFlowProps
         <div style={{ perspective: 800 }}>
           <motion.div
             {...flip}
-            className={`flex flex-col gap-3 rounded-card border-2 bg-asphalt-800 p-5 ${stage.result.passed ? "border-verified-500" : stage.result.outcome === "partial" ? "border-amber" : "border-alert-500"}`}
+            className={`flex flex-col gap-3 rounded-card border-2 panel-fill p-5 ${stage.result.passed ? "border-verified-500" : stage.result.outcome === "partial" ? "border-amber" : "border-alert-500"}`}
           >
             {/* the pill starts as "Fix claimed" (yellow) and crossfades to the result over 300 ms */}
             <div className="relative h-7">

@@ -13,7 +13,7 @@ import type { CaseReport, IssueDetail } from "@/lib/issue-detail";
 
 export function Section({ title, icon, children, note }: { title: string; icon: ReactNode; children: ReactNode; note?: ReactNode }) {
   return (
-    <section className="flex flex-col gap-4 rounded-card border border-white/8 bg-ink-850 p-5">
+    <section className="flex flex-col gap-4 rounded-card panel p-5">
       <div className="flex items-center justify-between gap-3">
         <h2 className="flex items-center gap-2 font-display text-[20px] font-semibold">
           {icon}

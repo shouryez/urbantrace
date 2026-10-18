@@ -40,7 +40,7 @@ export function Done({ result, position, onAnother }: DoneProps) {
         </p>
       )}
       {result.linked.length > 1 && (
-        <div className="flex w-full flex-col gap-2 rounded-card border border-white/6 bg-asphalt-800 p-4">
+        <div className="flex w-full flex-col gap-2 rounded-card panel p-4">
           <p className="kicker text-mist-300">Your case filed {result.linked.length} issues</p>
           <ul className="flex flex-col gap-1.5 text-sm">
             {result.linked.map((l) => (
@@ -57,7 +57,7 @@ export function Done({ result, position, onAnother }: DoneProps) {
         </div>
       )}
       {result.bodyName && (
-        <div className="flex w-full flex-col gap-1 rounded-card border border-white/6 bg-asphalt-800 p-4">
+        <div className="flex w-full flex-col gap-1 rounded-card panel p-4">
           <p className="kicker text-mist-300">Routed to</p>
           <p className="font-medium">{result.bodyName}</p>
           {!result.merged && <p className="text-sm text-mist-300">A complaint letter is being drafted for them.</p>}

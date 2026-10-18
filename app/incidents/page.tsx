@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { Network, Siren } from "lucide-react";
 import { CATEGORY_LABELS, type Category } from "@/lib/ai/schemas";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { listIncidents, type Incident } from "@/lib/incidents-query";
 
 export const metadata: Metadata = { title: "Incidents · UrbanTrace" };
@@ -16,7 +17,7 @@ function IncidentRow({ i }: { i: Incident }) {
       <Link
         href={`/incident/${i.id}`}
         className={`flex flex-col gap-3 rounded-card border p-5 transition-transform hover:-translate-y-0.5 ${
-          i.status === "resolved" ? "border-white/8 bg-ink-850 opacity-70" : alert ? "border-siren/40 bg-siren/8" : "border-violet/30 bg-violet/6"
+          i.status === "resolved" ? "border-white/8 panel-fill opacity-70" : alert ? "border-siren/40 bg-siren/8" : "border-violet/30 bg-violet/6"
         }`}
       >
         <div className="flex items-center justify-between gap-3">
@@ -51,7 +52,7 @@ async function IncidentList() {
       {active.length ? (
         <ul className="grid gap-4 md:grid-cols-2">{active.map((i) => <IncidentRow key={i.id} i={i} />)}</ul>
       ) : (
-        <p className="rounded-card border border-white/8 bg-ink-850 p-6 text-fog-300">
+        <p className="rounded-card panel p-6 text-fog-300">
           No active incidents. When several related reports gather in one area, or reports burst far above an area&apos;s normal rate, they appear here.
         </p>
       )}
@@ -68,13 +69,10 @@ async function IncidentList() {
 export default function IncidentsPage() {
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 py-8 md:px-6">
-      <header className="flex flex-col gap-2">
-        <p className="kicker text-fog-300">Incidents and alerts</p>
-        <h1 className="font-display text-[36px] leading-tight font-bold">Many reports, one underlying problem</h1>
-        <p className="max-w-2xl text-fog-300">
-          Related reports that are close in space and time are grouped into one incident with its likely root cause. Sudden bursts of reports raise a civic alert.
-        </p>
-      </header>
+      <PageHeader kicker="Incidents and alerts" title="Many reports, one" accent="root cause">
+        Related reports that are close in space and time are grouped into one incident with its likely root cause. Sudden bursts of reports raise a
+        civic alert.
+      </PageHeader>
       <Suspense fallback={<div className="skeleton h-64 rounded-card" />}>
         <IncidentList />
       </Suspense>

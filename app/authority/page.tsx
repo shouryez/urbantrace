@@ -8,6 +8,7 @@ import { CATEGORY_LABELS, type Category } from "@/lib/ai/schemas";
 import { isAuthority } from "@/lib/authority";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { listIncidents } from "@/lib/incidents-query";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { CITY_BBOX, fetchIssues } from "@/lib/issues-query";
 
 export const metadata: Metadata = { title: "Authority console · UrbanTrace" };
@@ -84,7 +85,7 @@ async function Console() {
       <section className="flex flex-col gap-3">
         <h2 className="font-display text-xl font-semibold">Priority queue</h2>
         <p className="text-sm text-fog-300">Open cases ranked by the explainable priority signal, not by upvotes.</p>
-        <ul className="flex flex-col divide-y divide-white/6 rounded-card border border-white/8 bg-ink-850">
+        <ul className="flex flex-col divide-y divide-white/6 rounded-card panel">
           {queue.map((f) => {
             const p = f.properties;
             const x = extra.get(p.id);
@@ -127,7 +128,7 @@ async function Console() {
         <p className="text-sm text-fog-300">
           Documented repairs and recurring problems per road segment (about 150 m). An analytical signal for where a lasting fix is needed; it does not attribute fault to any contractor.
         </p>
-        <div className="overflow-x-auto rounded-card border border-white/8 bg-ink-850">
+        <div className="overflow-x-auto rounded-card panel">
           <table className="w-full text-sm">
             <thead className="text-left text-xs text-fog-500">
               <tr>
@@ -163,10 +164,9 @@ async function Console() {
 export default function AuthorityPage() {
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 py-8 md:px-6">
-      <header className="flex flex-col gap-2">
-        <p className="kicker text-fog-300">Authority console</p>
-        <h1 className="font-display text-[36px] leading-tight font-bold">Work the queue, fix the root</h1>
-      </header>
+      <PageHeader kicker="Authority console" title="Work the queue, fix the" accent="root">
+        Cases ranked by an explainable priority, moved stage by stage, with the repair history of every road segment.
+      </PageHeader>
       <Suspense fallback={<div className="skeleton h-64 rounded-card" />}>
         <Console />
       </Suspense>

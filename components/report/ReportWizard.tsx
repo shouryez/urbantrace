@@ -216,7 +216,7 @@ export function ReportWizard({ targetId, mlOn }: ReportWizardProps) {
                   <img src={previewUrl} alt="Your evidence" className="max-h-[36vh] w-full object-cover" />
                 </ScanLoader>
               ) : (
-                <blockquote className="rounded-card border border-white/8 bg-ink-850 p-5 text-lg leading-relaxed">{transcript}</blockquote>
+                <blockquote className="rounded-card panel p-5 text-lg leading-relaxed">{transcript}</blockquote>
               )}
               {analysis.state === "loading" && (
                 <p className="text-sm text-mist-300" aria-live="polite">

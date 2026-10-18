@@ -24,7 +24,7 @@ type IssueCardProps = {
 export function IssueCard({ issue, active = false }: IssueCardProps) {
   return (
     <article
-      className={`flex flex-col gap-3 rounded-card border bg-asphalt-800 p-3 transition-transform duration-150 ease-out ${
+      className={`flex flex-col gap-3 rounded-card border panel-fill p-3 transition-transform duration-150 ease-out ${
         active ? "-translate-y-1 border-marking-400/30" : "border-white/6 hover:-translate-y-1 hover:border-marking-400/30"
       }`}
     >

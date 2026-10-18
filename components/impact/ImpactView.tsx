@@ -22,7 +22,7 @@ export function ImpactView() {
   if (!impact) return <div className="skeleton h-64 rounded-card" />;
   if (!impact.reports) {
     return (
-      <div className="flex flex-col items-start gap-4 rounded-card border border-white/8 bg-ink-850 p-6">
+      <div className="flex flex-col items-start gap-4 rounded-card panel p-6">
         <p className="text-fog-200">You have not reported anything from this phone yet.</p>
         <Link href="/report" className={buttonClasses("primary")}>
           Report your first issue
@@ -41,7 +41,7 @@ export function ImpactView() {
     <div className="flex flex-col gap-6">
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {tiles.map(([n, label, tone]) => (
-          <div key={label} className="rounded-card border border-white/8 bg-ink-850 p-5">
+          <div key={label} className="rounded-card panel p-5">
             <p className={`num text-4xl font-semibold ${tone}`}>{n}</p>
             <p className="mt-2 text-sm text-fog-300">{label}</p>
           </div>

@@ -20,7 +20,7 @@ export function AuthorityLogin() {
     router.refresh();
   };
   return (
-    <form onSubmit={(e) => void submit(e)} className="flex max-w-md flex-col gap-3 rounded-card border border-white/8 bg-ink-850 p-6">
+    <form onSubmit={(e) => void submit(e)} className="flex max-w-md flex-col gap-3 rounded-card panel p-6">
       <label className="flex flex-col gap-2 text-sm font-bold">
         Ward office passcode
         <input

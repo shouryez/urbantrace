@@ -32,7 +32,7 @@ export function CityIntel({ data }: { data: CityIntelData }) {
   const clusters = data.incidents.filter((i) => i.kind === "cluster");
   return (
     <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
-      <section className="flex flex-col gap-4 rounded-card border border-white/6 bg-ink-850 p-5">
+      <section className="flex flex-col gap-4 rounded-card panel p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="flex items-center gap-2 font-display text-[22px] font-semibold">
             <CloudRain size={20} className="text-cyan" aria-hidden /> Rain and civic reports
@@ -59,7 +59,7 @@ export function CityIntel({ data }: { data: CityIntelData }) {
       </section>
 
       <div className="flex flex-col gap-6">
-        <section className="flex flex-col gap-3 rounded-card border border-white/6 bg-ink-850 p-5">
+        <section className="flex flex-col gap-3 rounded-card panel p-5">
           <h2 className="font-display text-[22px] font-semibold">Open cases by priority</h2>
           <div className="flex h-3 overflow-hidden rounded-full bg-white/6" aria-hidden>
             {BANDS.map(([k, , c]) => (
@@ -76,7 +76,7 @@ export function CityIntel({ data }: { data: CityIntelData }) {
           </dl>
         </section>
 
-        <section className="flex flex-col gap-3 rounded-card border border-white/6 bg-ink-850 p-5">
+        <section className="flex flex-col gap-3 rounded-card panel p-5">
           <div className="flex items-baseline justify-between">
             <h2 className="font-display text-[22px] font-semibold">Incidents</h2>
             <Link href="/incidents" className="text-sm text-signal underline-offset-4 hover:underline">

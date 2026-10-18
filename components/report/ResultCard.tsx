@@ -68,7 +68,7 @@ export function ResultCard({
 
   if (reading && !reading.is_civic_issue) {
     return (
-      <motion.div {...enter} className="flex flex-col gap-4 rounded-card border border-white/6 bg-asphalt-800 p-5">
+      <motion.div {...enter} className="flex flex-col gap-4 rounded-card panel p-5">
         <h2 className="font-display text-[22px] font-semibold">This doesn&apos;t look like a street problem</h2>
         <p className="text-sm text-mist-300">
           The model saw: <span className="text-chalk-50">{reading.summary}</span>
@@ -91,7 +91,7 @@ export function ResultCard({
   return (
     <motion.form
       {...enter}
-      className="flex flex-col gap-5 rounded-card border border-white/6 bg-asphalt-800 p-5"
+      className="flex flex-col gap-5 rounded-card panel p-5"
       onSubmit={(e) => {
         e.preventDefault();
         if (category && canSubmit) {

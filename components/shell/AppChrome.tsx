@@ -8,6 +8,7 @@ import { usePathname } from "next/navigation";
 import { Camera, ChartColumn, Map, Network, ShieldCheck, Sparkles } from "lucide-react";
 import { Suspense } from "react";
 import { Logo } from "@/components/home/HomeExperience";
+import { Backdrop } from "./Backdrop";
 
 const LINKS = [
   { href: "/map", label: "Live city", Icon: Map },
@@ -25,6 +26,7 @@ function Chrome() {
   const active = (href: string) => pathname === href || pathname.startsWith(`${href}/`) || (href === "/incidents" && pathname.startsWith("/incident/"));
   return (
     <>
+      <Backdrop />
       <header className="no-print sticky top-0 z-40 hidden px-6 pt-4 md:block">
         <nav aria-label="Main" className="glass mx-auto flex h-14 max-w-6xl items-center justify-between rounded-full pr-2 pl-4">
           <Logo />

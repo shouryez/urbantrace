@@ -65,7 +65,7 @@ export function Dashboard({ data }: { data: DashboardData }) {
     : (data.corporations.find((c) => c.id === corporation)?.name ?? "All of Bengaluru, including BWSSB and BESCOM issues");
 
   const chart = (
-    <section className="flex flex-col gap-4 rounded-card border border-white/6 bg-asphalt-800 p-5">
+    <section className="flex flex-col gap-4 rounded-card panel p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="font-display text-[22px] font-semibold">Issues by category</h2>
         <p className="text-sm text-mist-300" aria-live="polite">
@@ -92,7 +92,7 @@ export function Dashboard({ data }: { data: DashboardData }) {
                   setWardId(null);
                   setCorporation(active && !ward ? null : c.id);
                 }}
-                className={`flex h-full w-full flex-col gap-4 rounded-card border bg-asphalt-800 p-4 text-left transition-transform duration-150 ease-out hover:-translate-y-1 ${
+                className={`flex h-full w-full flex-col gap-4 rounded-card border panel-fill p-4 text-left transition-transform duration-150 ease-out hover:-translate-y-1 ${
                   active ? "border-marking-400" : "border-white/6 hover:border-marking-400/30"
                 }`}
               >
@@ -109,7 +109,7 @@ export function Dashboard({ data }: { data: DashboardData }) {
 
       {data.wards.length > 0 ? (
         <div className="grid gap-6 lg:grid-cols-2">
-          <section className="flex flex-col gap-4 rounded-card border border-white/6 bg-asphalt-800 p-5">
+          <section className="flex flex-col gap-4 rounded-card panel p-5">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h2 className="font-display text-[22px] font-semibold">Open issues by ward</h2>
               {ward && (
