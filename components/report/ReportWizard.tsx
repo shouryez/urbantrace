@@ -1,21 +1,21 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { ScanLoader } from "@/components/motion/ScanLoader";
 import { Button } from "@/components/ui/Button";
 import { getDeviceId } from "@/lib/device";
 import type { LatLng } from "@/lib/geo";
-import type { AnalyzeResult, NearbyIssue, SubmitBody, SubmitResult } from "@/lib/reports";
-import { Capture } from "./Capture";
+import type { AnalyzeResult, MediaKind, NearbyIssue, SubmitBody, SubmitResult } from "@/lib/reports";
+import { CaseDetected } from "./CaseDetected";
 import { Done } from "./Done";
+import { EvidencePicker, type Evidence } from "./EvidencePicker";
 import { Locate } from "./Locate";
 import { ResultCard, type ReportValues } from "./ResultCard";
 import { SameProblem } from "./SameProblem";
 import { StepTrace } from "./StepTrace";
-import { VoiceNote } from "./VoiceNote";
 
-const STEPS = ["Capture", "Locate", "AI reading", "Same problem?", "Done"] as const;
+const STEPS = ["Evidence", "Locate", "AI case", "Same problem?", "Done"] as const;
 type Step = 0 | 1 | 2 | 3 | 4;
 
 type Analysis =
@@ -43,12 +43,13 @@ type ReportWizardProps = {
 export function ReportWizard({ targetId, mlOn }: ReportWizardProps) {
   const reduce = useReducedMotion();
   const [step, setStep] = useState<Step>(0);
-  const [photo, setPhoto] = useState<File | null>(null);
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
-  const [captureError, setCaptureError] = useState<string | null>(null);
+  const [mode, setMode] = useState<MediaKind>("photo");
+  const [evidence, setEvidence] = useState<Evidence | null>(null);
   const [transcript, setTranscript] = useState("");
+  const [language, setLanguage] = useState<string | null>(null);
   const [position, setPosition] = useState<LatLng | null>(null);
   const [analysis, setAnalysis] = useState<Analysis>({ state: "idle" });
+  const [included, setIncluded] = useState<Set<number>>(new Set());
   // similar: matched by meaning (F12) rather than by category within 30 m (F4).
   const [pending, setPending] = useState<{ values: ReportValues; match: NearbyIssue; similar: boolean } | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -57,76 +58,78 @@ export function ReportWizard({ targetId, mlOn }: ReportWizardProps) {
   // Set once the user has been told they are too far from the target issue.
   const [ignoreTarget, setIgnoreTarget] = useState(false);
 
-  // Revoke the preview's object URL when it is replaced or the page closes.
-  const urlRef = useRef<string | null>(null);
-  useEffect(() => () => {
-    if (urlRef.current) URL.revokeObjectURL(urlRef.current);
-  }, []);
+  const previewUrl = evidence?.kind === "photo" ? evidence.url : evidence?.kind === "video" ? (evidence.frames[0]?.url ?? null) : null;
 
-  const handleCapture = (file: File) => {
-    if (!file.type.startsWith("image/")) {
-      setCaptureError("That file is not a photo.");
-      return;
-    }
-    if (urlRef.current) URL.revokeObjectURL(urlRef.current);
-    urlRef.current = URL.createObjectURL(file);
-    setCaptureError(null);
-    setPhoto(file);
-    setPhotoUrl(urlRef.current);
-  };
-
-  const analyze = async (file: File, at: LatLng) => {
+  const analyze = async (at: LatLng) => {
     setAnalysis({ state: "loading" });
     const form = new FormData();
-    form.set("photo", file);
+    if (evidence?.kind === "photo") form.set("photo", evidence.file);
+    if (evidence?.kind === "video") {
+      evidence.frames.forEach((f, i) => {
+        form.append("frames", f.blob, `frame-${i}.jpg`);
+        form.append("frameTimes", String(f.time));
+      });
+    }
     form.set("lat", String(at.lat));
     form.set("lng", String(at.lng));
     if (transcript.trim()) form.set("transcript", transcript.trim());
+    if (language) form.set("language", language);
     try {
       const res = await fetch("/api/reports/analyze", { method: "POST", body: form });
       if (!res.ok) {
-        setAnalysis({ state: "error", message: await errorMessage(res, "Could not upload the photo.") });
+        setAnalysis({ state: "error", message: await errorMessage(res, "Could not read the evidence.") });
         return;
       }
-      setAnalysis({ state: "ready", result: (await res.json()) as AnalyzeResult });
+      const data = (await res.json()) as AnalyzeResult;
+      // Secondary problems are filed too unless the reporter unticks them.
+      setIncluded(new Set(data.case ? data.case.issues.slice(1).map((_, i) => i + 1) : []));
+      setAnalysis({ state: "ready", result: data });
     } catch {
       setAnalysis({ state: "error", message: "Network error. Check your connection and try again." });
     }
   };
 
   const handleLocate = (at: LatLng) => {
-    if (!photo) return;
     setPosition(at);
     setStep(2);
-    void analyze(photo, at);
+    void analyze(at);
   };
 
   const submit = async (values: ReportValues, choice: { forceNew?: boolean; targetIssueId?: number } = {}) => {
     if (analysis.state !== "ready" || !position) return;
+    const r = analysis.result;
     setSubmitting(true);
     setSubmitError(null);
+    const secondaries = (r.case?.issues ?? []).filter((_, i) => i > 0 && included.has(i));
     const body: SubmitBody = {
       ...position,
-      photoPath: analysis.result.photoPath,
-      category: values.category,
-      severity: values.severity,
-      summary: values.summary,
-      ai: analysis.result.reading,
+      photoPath: r.photoPath,
+      framePaths: r.frames.map((f) => f.path),
+      frameTimes: r.frames.map((f) => f.time ?? 0),
+      media: r.media,
+      issues: [
+        { category: values.category, severity: values.severity, summary: values.summary, frames: r.case?.issues[0]?.frames ?? [] },
+        ...secondaries,
+      ],
+      case: r.case,
+      ai: r.reading,
       userEdited: values.userEdited,
       deviceId: getDeviceId(),
       corporationId: values.corporationId,
       transcript: transcript.trim() || null,
+      language: r.language,
+      summaryLocal: r.case?.summary_local || null,
       depthClass: values.category === "pothole" ? values.depthClass : null,
       datasetConsent: values.datasetConsent,
+      accessibility: r.case?.accessibility ?? "none",
+      road: r.road,
+      roadClass: r.roadClass,
+      address: r.address,
       forceNew: choice.forceNew ?? false,
       targetIssueId: choice.targetIssueId ?? null,
     };
     try {
-      const res = await fetch("/api/reports/submit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+      const res = await fetch("/api/reports/submit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       if (!res.ok) {
         setSubmitError(await errorMessage(res, "Could not file the report."));
         return;
@@ -164,11 +167,9 @@ export function ReportWizard({ targetId, mlOn }: ReportWizardProps) {
   };
 
   const reset = () => {
-    if (urlRef.current) URL.revokeObjectURL(urlRef.current);
-    urlRef.current = null;
-    setPhoto(null);
-    setPhotoUrl(null);
+    setEvidence(null);
     setTranscript("");
+    setLanguage(null);
     setPosition(null);
     setAnalysis({ state: "idle" });
     setPending(null);
@@ -185,68 +186,86 @@ export function ReportWizard({ targetId, mlOn }: ReportWizardProps) {
       <StepTrace steps={STEPS} current={step} />
       {targetId !== null && step < 4 && (
         <p className="text-sm text-mist-300">
-          Backing issue <span className="font-mono text-chalk-50">#{targetId}</span>: take a photo of it from where you stand.
+          Backing issue <span className="font-mono text-chalk-50">#{targetId}</span>: capture it from where you stand.
         </p>
       )}
       <AnimatePresence mode="wait" initial={false}>
-        <motion.section
-          key={step}
-          initial={{ opacity: 0, x: offset }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -offset }}
-          transition={transition}
-        >
+        <motion.section key={step} initial={{ opacity: 0, x: offset }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -offset }} transition={transition}>
           {step === 0 && (
-            <Capture
-              photoUrl={photoUrl}
-              error={captureError}
-              onCapture={handleCapture}
+            <EvidencePicker
+              mode={mode}
+              onMode={setMode}
+              evidence={evidence}
+              onEvidence={setEvidence}
+              transcript={transcript}
+              onTranscript={(text, lang) => {
+                setTranscript(text);
+                if (lang) setLanguage(lang);
+              }}
+              mlOn={mlOn}
               onNext={() => setStep(1)}
-              voiceNote={mlOn ? <VoiceNote value={transcript} onChange={setTranscript} /> : null}
             />
           )}
           {step === 1 && <Locate onConfirm={handleLocate} onBack={() => setStep(0)} />}
-          {step === 2 && photoUrl && (
+          {step === 2 && (
             <div className="flex flex-col gap-5">
-              <ScanLoader active={analysis.state === "loading"}>
-                {/* A blob: URL from the camera, so next/image does not apply here. */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={photoUrl} alt="Your photo" className="max-h-[40vh] w-full object-cover" />
-              </ScanLoader>
+              {previewUrl ? (
+                <ScanLoader active={analysis.state === "loading"}>
+                  {/* A blob: URL from the camera, so next/image does not apply here. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={previewUrl} alt="Your evidence" className="max-h-[36vh] w-full object-cover" />
+                </ScanLoader>
+              ) : (
+                <blockquote className="rounded-card border border-white/8 bg-ink-850 p-5 text-lg leading-relaxed">{transcript}</blockquote>
+              )}
               {analysis.state === "loading" && (
                 <p className="text-sm text-mist-300" aria-live="polite">
-                  Reading the photo…
+                  {mode === "video" ? "Investigating every frame…" : mode === "voice" ? "Turning your words into a case…" : "Reading the photo…"}
                 </p>
               )}
               {analysis.state === "error" && (
                 <div className="flex flex-col items-start gap-3" role="alert">
                   <p className="text-sm text-chalk-50">{analysis.message}</p>
-                  <Button onClick={() => photo && position && void analyze(photo, position)}>Try again</Button>
+                  <Button onClick={() => position && void analyze(position)}>Try again</Button>
                 </div>
               )}
               {analysis.state === "ready" && (
-                <ResultCard
-                  reading={analysis.result.reading}
-                  address={analysis.result.address}
-                  askCorporation={analysis.result.corporationId === null}
-                  depthClass={analysis.result.depthClass}
-                  offerConsent={mlOn}
-                  submitting={submitting}
-                  error={submitError}
-                  onSubmit={handleValues}
-                  onRetake={() => {
-                    setAnalysis({ state: "idle" });
-                    setStep(0);
-                  }}
-                />
+                <>
+                  <CaseDetected
+                    result={analysis.result}
+                    included={included}
+                    onToggle={(i) =>
+                      setIncluded((s) => {
+                        const next = new Set(s);
+                        if (next.has(i)) next.delete(i);
+                        else next.add(i);
+                        return next;
+                      })
+                    }
+                  />
+                  <ResultCard
+                    reading={analysis.result.reading}
+                    address={analysis.result.address}
+                    askCorporation={analysis.result.corporationId === null}
+                    depthClass={analysis.result.depthClass}
+                    offerConsent={mlOn && analysis.result.media !== "voice"}
+                    submitting={submitting}
+                    error={submitError}
+                    onSubmit={handleValues}
+                    onRetake={() => {
+                      setAnalysis({ state: "idle" });
+                      setStep(0);
+                    }}
+                  />
+                </>
               )}
             </div>
           )}
-          {step === 3 && pending && photoUrl && (
+          {step === 3 && pending && (
             <SameProblem
               match={pending.match}
               similar={pending.similar}
-              photoUrl={photoUrl}
+              photoUrl={previewUrl ?? pending.match.photoUrl ?? ""}
               submitting={submitting}
               error={submitError}
               onSame={() => void submit(pending.values, { targetIssueId: pending.match.id })}

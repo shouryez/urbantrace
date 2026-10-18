@@ -1,6 +1,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { BackerCount } from "@/components/ui/BackerCount";
+import { CATEGORY_LABELS } from "@/lib/ai/schemas";
 import { Button, buttonClasses } from "@/components/ui/Button";
 import type { LatLng } from "@/lib/geo";
 import type { SubmitResult } from "@/lib/reports";
@@ -32,6 +33,29 @@ export function Done({ result, position, onAnother }: DoneProps) {
         <BackerCount value={result.backerCount} fromZero className="text-chalk-50" />{" "}
         {result.backerCount === 1 ? "backer" : "backers"}.
       </p>
+      {result.recurrence && (
+        <p className="w-full rounded-card border border-ember/40 bg-ember/10 p-4 text-sm">
+          <span className="font-bold text-ember">Recurring issue.</span> This came back {result.recurrence.lastedDays} days after a verified repair
+          (issue <span className="font-mono">#{result.recurrence.previousIssueId}</span>). It is flagged for a lasting fix, not another patch.
+        </p>
+      )}
+      {result.linked.length > 1 && (
+        <div className="flex w-full flex-col gap-2 rounded-card border border-white/6 bg-asphalt-800 p-4">
+          <p className="kicker text-mist-300">Your case filed {result.linked.length} issues</p>
+          <ul className="flex flex-col gap-1.5 text-sm">
+            {result.linked.map((l) => (
+              <li key={l.issueId} className="flex items-center justify-between gap-3">
+                <Link href={`/issue/${l.issueId}`} className="font-medium underline-offset-4 hover:underline">
+                  {CATEGORY_LABELS[l.category]}
+                </Link>
+                <span className="font-mono text-xs text-mist-300">
+                  #{l.issueId} · {l.merged ? "backed an existing issue" : "new"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {result.bodyName && (
         <div className="flex w-full flex-col gap-1 rounded-card border border-white/6 bg-asphalt-800 p-4">
           <p className="kicker text-mist-300">Routed to</p>

@@ -9,7 +9,8 @@ const MAX_SECONDS = 30;
 
 type VoiceNoteProps = {
   value: string;
-  onChange: (text: string) => void;
+  /** The language Whisper detected comes with a fresh transcript (feature 12). */
+  onChange: (text: string, language?: string) => void;
 };
 
 type State = { kind: "idle" } | { kind: "recording"; seconds: number } | { kind: "transcribing" } | { kind: "error"; message: string };
@@ -46,12 +47,12 @@ export function VoiceNote({ value, onChange }: VoiceNoteProps) {
     form.set("audio", blob, blob.type.includes("mp4") ? "note.mp4" : "note.webm");
     try {
       const res = await fetch("/api/voice", { method: "POST", body: form });
-      const body = (await res.json()) as { text?: string; error?: string };
+      const body = (await res.json()) as { text?: string; language?: string; error?: string };
       if (!res.ok || typeof body.text !== "string") {
         setState({ kind: "error", message: body.error ?? "Could not transcribe the note." });
         return;
       }
-      onChange(body.text.slice(0, TRANSCRIPT_MAX));
+      onChange(body.text.slice(0, TRANSCRIPT_MAX), body.language);
       setState({ kind: "idle" });
     } catch {
       setState({ kind: "error", message: "Network error. Type the note instead." });
