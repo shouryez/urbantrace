@@ -31,7 +31,9 @@ async function IncidentView({ params }: { params: PageProps<"/incident/[id]">["p
           {alert ? <Siren size={15} aria-hidden /> : <Network size={15} aria-hidden />}
           {alert ? "Civic alert" : "Possible civic incident"} · INC-{i.id} · {i.status}
         </p>
-        <h1 className="font-display text-[34px] leading-tight font-bold">{i.title}</h1>
+        <h1 className="font-display text-[38px] leading-[1.05] font-bold tracking-tight md:text-[48px]">
+          <span className="text-aurora">{i.title}</span>
+        </h1>
         {i.explanation && <p className="text-fog-200">{i.explanation}</p>}
         <div className="num grid grid-cols-2 gap-3 text-center sm:grid-cols-4">
           {[

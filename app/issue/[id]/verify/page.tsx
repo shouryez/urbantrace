@@ -23,7 +23,9 @@ async function Verify({ params }: { params: PageProps<"/issue/[id]/verify">["par
       <Link href={`/issue/${id}`} className={buttonClasses("ghost", "self-start px-0")}>
         <ArrowLeft size={16} strokeWidth={1.75} aria-hidden /> Issue <span className="font-mono">#{id}</span>
       </Link>
-      <h1 className="font-display text-[32px] leading-tight font-semibold">Submit fix photo</h1>
+      <h1 className="font-display text-[40px] leading-[1.05] font-bold tracking-tight">
+        <span className="text-aurora">Prove the</span> <span className="font-serif font-normal italic">fix</span>
+      </h1>
       {issue.status === "open" ? (
         <VerifyFlow issueId={id} beforeUrl={issue.photoUrl} offerConsent={mlEnabled()} />
       ) : (
