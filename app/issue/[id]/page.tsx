@@ -3,7 +3,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, History, Network, ScanSearch } from "lucide-react";
+import { CitizenConfirm, ScenarioPanel, TimeMachinePanel } from "@/components/case/Interactive";
+import { AssignmentPanel, CaseFilePanel, EvidenceMedia, EvidencePanel, JourneyPanel, PriorityPanel, Section } from "@/components/case/Panels";
 import { BeforeAfter } from "@/components/issue/BeforeAfter";
 import { timeAgo } from "@/components/issue/IssueCard";
 import { LetterCard } from "@/components/issue/LetterCard";
@@ -14,7 +16,9 @@ import { CategoryChip } from "@/components/ui/CategoryChip";
 import { SeverityMeter } from "@/components/ui/SeverityMeter";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { PHOTO_BLUR } from "@/lib/blur";
+import { journey } from "@/lib/intel/journey";
 import { getIssue } from "@/lib/issue-detail";
+import { supabaseAdmin } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
   title: "Issue · UrbanTrace",
@@ -27,6 +31,10 @@ async function IssueView({ params }: { params: PageProps<"/issue/[id]">["params"
   if (!issue) notFound();
 
   const latest = issue.verifications.at(-1);
+  const incident =
+    issue.incidentId !== null
+      ? (await supabaseAdmin().from("incidents").select("id, title, report_count, kind, status").eq("id", issue.incidentId).maybeSingle()).data
+      : null;
 
   return (
     <article className="flex flex-col gap-8">
@@ -53,6 +61,26 @@ async function IssueView({ params }: { params: PageProps<"/issue/[id]">["params"
         <SeverityMeter value={issue.severity} className="max-w-md" />
       </header>
 
+      {issue.recurrenceOf !== null && (
+        <Link href={`/issue/${issue.recurrenceOf}`} className="flex items-start gap-3 rounded-card border border-ember/40 bg-ember/10 p-4 text-sm">
+          <History size={18} className="mt-0.5 shrink-0 text-ember" aria-hidden />
+          <span>
+            <span className="font-extrabold text-ember uppercase">Recurring issue.</span> This came back
+            {issue.repairLastedDays !== null ? ` ${issue.repairLastedDays} days` : ""} after a verified repair of issue{" "}
+            <span className="font-mono">#{issue.recurrenceOf}</span>. A lasting fix is needed, not another patch.
+          </span>
+        </Link>
+      )}
+      {incident && (
+        <Link href={`/incident/${incident.id}`} className="flex items-start gap-3 rounded-card border border-violet/40 bg-violet/10 p-4 text-sm">
+          <Network size={18} className="mt-0.5 shrink-0 text-violet" aria-hidden />
+          <span>
+            Part of {incident.kind === "alert" ? "a civic alert" : "an incident"}: <span className="font-bold">{incident.title as string}</span> ·{" "}
+            <span className="font-mono">{incident.report_count as number} reports</span>. See the root cause graph.
+          </span>
+        </Link>
+      )}
+
       <div className="flex flex-wrap gap-3">
         {issue.status !== "verified" && (
           <Link href={`/report?target=${issue.id}`} className={buttonClasses("secondary")}>
@@ -66,6 +94,15 @@ async function IssueView({ params }: { params: PageProps<"/issue/[id]">["params"
         )}
         {issue.status === "fix_claimed" && <p className="text-sm text-mist-300">A fix photo is being checked right now.</p>}
       </div>
+
+      {issue.priority && <PriorityPanel priority={issue.priority} />}
+      <JourneyPanel steps={journey(issue.stage, issue.status, issue.events)} />
+      {issue.assignment && <AssignmentPanel assignment={issue.assignment} />}
+      {issue.evidence && <EvidencePanel evidence={issue.evidence} />}
+      <EvidenceMedia reports={issue.reports} />
+      <TimeMachinePanel lat={issue.lat} lng={issue.lng} segmentKey={issue.segmentKey} />
+      {issue.status !== "verified" && <ScenarioPanel endpoint={`/api/issues/${issue.id}/scenario`} initial={issue.scenario} />}
+      {issue.caseFile && <CaseFilePanel caseFile={issue.caseFile} />}
 
       {issue.bodyName && (
         <section className="flex flex-col gap-1 rounded-card border border-white/6 bg-asphalt-800 p-5">
@@ -91,8 +128,34 @@ async function IssueView({ params }: { params: PageProps<"/issue/[id]">["params"
             </p>
           )}
           {latest.photoCredit && <p className="text-xs text-mist-300">After photo: {latest.photoCredit}</p>}
+          {latest.checks && (
+            <Section
+              title="Repair verification"
+              icon={<ScanSearch size={18} aria-hidden />}
+              note={
+                <span className={`rounded-full px-3 py-1 text-xs font-extrabold uppercase ${latest.outcome === "verified" ? "bg-mint text-ink-950" : latest.outcome === "partial" ? "bg-amber text-ink-950" : "bg-ember text-ink-950"}`}>
+                  {latest.outcome === "partial" ? "partially resolved" : latest.outcome} · <span className="num">{latest.score}%</span>
+                </span>
+              }
+            >
+              <ul className="flex flex-col gap-2 text-sm">
+                {latest.checks.map((c) => (
+                  <li key={c.key} className="flex items-start justify-between gap-3">
+                    <span>
+                      <span className="font-bold uppercase">{c.label}</span>
+                      <span className="text-fog-300"> · {c.detail}</span>
+                    </span>
+                    <span className={`flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-bold text-ink-950 ${c.state === "pass" ? "bg-mint" : c.state === "warn" ? "bg-amber" : "bg-ember"}`}>
+                      {c.state === "pass" ? "✓" : c.state === "warn" ? "!" : "✕"}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </Section>
+          )}
         </section>
       )}
+      {issue.status === "verified" && <CitizenConfirm issueId={issue.id} initial={issue.confirmations} />}
 
       <section className="flex flex-col gap-4">
         <h2 className="font-display text-[22px] font-semibold">Issue trail</h2>
