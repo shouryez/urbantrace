@@ -138,7 +138,7 @@ export function VerifyFlow({ issueId, beforeUrl, offerConsent }: VerifyFlowProps
         <div style={{ perspective: 800 }}>
           <motion.div
             {...flip}
-            className={`flex flex-col gap-3 rounded-card border-2 bg-asphalt-800 p-5 ${stage.result.passed ? "border-verified-500" : "border-alert-500"}`}
+            className={`flex flex-col gap-3 rounded-card border-2 bg-asphalt-800 p-5 ${stage.result.passed ? "border-verified-500" : stage.result.outcome === "partial" ? "border-amber" : "border-alert-500"}`}
           >
             {/* the pill starts as "Fix claimed" (yellow) and crossfades to the result over 300 ms */}
             <div className="relative h-7">
@@ -161,13 +161,44 @@ export function VerifyFlow({ issueId, beforeUrl, offerConsent }: VerifyFlowProps
                 <StatusPill status={stage.result.passed ? "verified" : "open"} />
               </motion.span>
             </div>
-            <h2 className="font-display text-[32px] leading-tight font-semibold">
-              {stage.result.passed ? "Verified fixed" : "Not verified yet"}
-            </h2>
+            <h2 className="font-display text-[32px] leading-tight font-semibold">{stage.result.headline}</h2>
             <p className="text-mist-300">{stage.result.reason}</p>
-            <p className="font-mono text-xs text-mist-300">
-              {stage.result.distanceM} m from the issue · confidence {stage.result.confidence}
+            <ul className="flex flex-col gap-2 text-sm">
+              {stage.result.checks.map((c, i) => (
+                <motion.li
+                  key={c.key}
+                  className="flex items-start justify-between gap-3"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: reduce ? 0 : 0.4 + i * 0.15 }}
+                >
+                  <span>
+                    <span className="font-bold uppercase">{c.label}</span>
+                    <span className="text-mist-300"> · {c.detail}</span>
+                  </span>
+                  <span
+                    className={`flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-bold text-ink-950 ${c.state === "pass" ? "bg-mint" : c.state === "warn" ? "bg-amber" : "bg-ember"}`}
+                  >
+                    {c.state === "pass" ? "✓" : c.state === "warn" ? "!" : "✕"}
+                  </span>
+                </motion.li>
+              ))}
+            </ul>
+            <div className="h-3 overflow-hidden rounded-full bg-white/8">
+              <motion.div
+                className={`h-full origin-left rounded-full ${stage.result.outcome === "verified" ? "bg-mint" : stage.result.outcome === "partial" ? "bg-amber" : "bg-ember"}`}
+                initial={{ scaleX: reduce ? stage.result.score / 100 : 0 }}
+                animate={{ scaleX: stage.result.score / 100 }}
+                transition={{ duration: reduce ? 0 : 1.2, delay: reduce ? 0 : 0.9 }}
+              />
+            </div>
+            <p className="flex justify-between text-sm">
+              <span className="font-extrabold uppercase">
+                {stage.result.outcome === "verified" ? "Resolved" : stage.result.outcome === "partial" ? "Partially resolved" : "Not resolved"}
+              </span>
+              <span className="font-mono">{stage.result.score}%</span>
             </p>
+            {stage.result.residualIssues.length > 0 && <p className="text-sm text-amber">Still to do: {stage.result.residualIssues.join("; ")}</p>}
             <div className="flex flex-wrap gap-3 pt-2">
               {!stage.result.passed && (
                 <label className={buttonClasses("primary", "cursor-pointer focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-marking-400")}>
