@@ -67,7 +67,10 @@ export function Done({ result, position, onAnother }: DoneProps) {
         <Link href={`/issue/${result.issueId}`} className={buttonClasses("primary")}>
           View issue and letter
         </Link>
-        <Link href="/map" className={buttonClasses("secondary")}>
+        <Link href="/me" className={buttonClasses("secondary")}>
+          Track it in My reports
+        </Link>
+        <Link href="/map" className={buttonClasses("ghost")}>
           See the map
         </Link>
         <Button variant="ghost" onClick={onAnother}>

@@ -1,6 +1,7 @@
 // Server only: the time machine for a point (features 6, 7, 19), the civic health of a map zone
 // (feature 13) and a person's civic impact (feature 20).
 import { askVision } from "@/lib/ai/ollama";
+import { wardAt } from "@/lib/wards";
 import { EXPLAIN_SYSTEM, explainUser } from "@/lib/ai/prompts";
 import { CATEGORY_LABELS, explanationJsonSchema, explanationSchema, type Category } from "@/lib/ai/schemas";
 import { geohash, geohashBounds, haversineM } from "@/lib/intel/geo";
@@ -78,6 +79,8 @@ export type ZoneReport = {
   health: number; // 0..100, 100 = well maintained
   summary: string;
   rain: RainImpact;
+  /** The ward at the centre of the cell, once the wards are loaded. */
+  ward: { id: number; name: string } | null;
 };
 
 /** Civic health of one ~1 km geohash cell, with a cached plain-words summary. */
@@ -123,7 +126,9 @@ export async function zoneReport(cell: string): Promise<ZoneReport> {
       : "No problems reported in this zone. It looks well maintained.";
     await db.from("zone_summaries").upsert({ cell, summary, stats, updated_at: new Date().toISOString() });
   }
-  return { cell, center: b.center, ...stats, mainIssue: main ? CATEGORY_LABELS[main] : null, health, summary, rain: rainNote };
+  const wardId = await wardAt(b.center.lat, b.center.lng).catch(() => null);
+  const { data: ward } = wardId ? await supabaseAdmin().from("wards").select("id, name").eq("id", wardId).maybeSingle<{ id: number; name: string }>() : { data: null };
+  return { cell, center: b.center, ...stats, mainIssue: main ? CATEGORY_LABELS[main] : null, health, summary, rain: rainNote, ward: ward ?? null };
 }
 
 export type Impact = {

@@ -58,6 +58,10 @@ Built by team **Code Not Found** for MLH Hacktoberfest Hack Day, Best Open-Sourc
 | Weather and civic reports | Rainfall from Open-Meteo against water and road reports: before and after heavy rain, and the correlation |
 | Civic impact | What your reports changed: verified fixes, hazards reported, recurring problems surfaced. No points or rankings |
 | Authority console | Officials work a queue ranked by priority and move cases stage by stage |
+| Follow-up questions | After reading the evidence, Gemma asks what a photo cannot show (how long it has been there, harm, rain, who uses the spot); the answers and the spot's history go into an AI research summary in the case file |
+| Ward directory | All 369 wards (GBA delimitation 2025): zone, division, assembly constituency and MLA, population, the zone's Joint and Deputy Commissioners and the Commissioner as published by each corporation, funds as reported, and the ward's open problems |
+| Email the ward office | The complaint email goes to the Joint Commissioner of the ward's zone, copied to the Deputy Commissioner and the Commissioner; Gmail compose link for phones |
+| Accounts | Optional name, email and password (Supabase Auth); "My reports" tracks every complaint across phones |
 
 On the roadmap: email and SMS alerts on status changes, and official grievance portals where they publish an API.
 
@@ -170,7 +174,7 @@ ollama pull gemma4:e2b            # fallback
 ollama pull nomic-embed-text      # F12
 ollama pull qwen3-vl:8b-instruct  # benchmark only
 
-# 3. Database: in the Supabase SQL editor, run supabase/migrations/0001 to 0007 in order.
+# 3. Database: in the Supabase SQL editor, run supabase/migrations/0001 to 0008 in order, then npm run seed:wards.
 #    They enable PostGIS and pgvector, create the tables with row level security, the photos
 #    bucket, the merge function, the read functions and views, and the intelligence tables.
 
@@ -198,6 +202,8 @@ The first photo after starting Ollama loads the model, which can take a couple o
 | `npm run test:db` | Database tests against `submit_report` on the Supabase project in `.env.local`; they clean up after themselves |
 | `npm run benchmark` | The model benchmark above |
 | `npm run seed:demo` | About 25 demo issues across Bengaluru from the benchmark photos in mixed statuses, plus a drainage incident in Koramangala, a flooding alert in Bellandur and a recurring pothole in HSR Layout; `-- --clear` removes them. They are seeded, and we say so in the pitch |
+| `npm run seed:wards` | Load the 369 wards from the OpenCity KML (public domain), derive the corporation boundaries, place issues in their ward, and load the officers, offices and MLAs from `lib/civic-directory.ts` |
+| `npm run seed:demo -- --wards` | Demo cases across about 60 wards (after `seed:wards`) |
 | `npm run seed:boundaries -- --corporations <file> --wards <file>` | Load corporation and ward boundaries from GeoJSON; until then users pick their corporation from a list |
 | `npm run export-dataset` | Export the consented, blurred photos as a Hugging Face image folder in `dataset/` |
 | `npm run typecheck`, `npm run lint` | TypeScript and ESLint |

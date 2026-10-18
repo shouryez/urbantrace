@@ -250,6 +250,11 @@ function ZonePanel({ cell }: { cell: string }) {
         <p className={`num text-5xl font-semibold ${tone}`}>{zone.health}</p>
         <p className="pb-1.5 text-sm text-fog-300">civic health out of 100</p>
       </div>
+      {zone.ward && (
+        <Link href={`/ward/${zone.ward.id}`} className="self-start rounded-full border border-white/12 px-3 py-1.5 text-xs font-bold hover:bg-white/6">
+          {zone.ward.name} ward: officers, MLA, funds →
+        </Link>
+      )}
       <p className="text-fog-100">{zone.summary}</p>
       <dl className="num grid grid-cols-3 gap-2 text-center">
         {[
