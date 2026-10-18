@@ -4,7 +4,7 @@
 
 UrbanTrace is an open source web app that traces a civic issue in Bengaluru from a photo report to a verified fix, using an open weight AI model we host ourselves. A resident snaps a photo of a pothole or a garbage pile. The model reads it, the app merges it with nearby reports of the same problem, routes it to the right authority with a drafted complaint, and closes it only when an after photo proves the repair.
 
-Built by team **Code Not Found** for MLH Hacktoberfest Hack Day, Best Open-Source AI Project: Shourya Pratap Singh Chouhan, Daksh Bhatt, Shreya Singh Chouhan, Devansh Jain.
+Built by team **Code Not Found** for MLH Hacktoberfest Hack Day, Best Open-Source AI Project: Shourya Pratap Singh Chouhan, Daksh Bhatt, Shreya Singh Chouhan.
 
 ![Landing page](docs/screenshots/landing.jpg)
 
