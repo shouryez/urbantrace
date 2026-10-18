@@ -15,7 +15,7 @@ export const STAGES = [
 export type StageKey = (typeof STAGES)[number]["key"];
 
 /** Stages an authority can move a case to, in order. */
-export const AUTHORITY_STAGES: StageKey[] = ["assigned", "field_team", "site_visit", "repair"];
+export const AUTHORITY_STAGES = ["assigned", "field_team", "site_visit", "repair"] as const satisfies readonly StageKey[];
 
 export type JourneyStep = { key: StageKey; label: string; detail: string; state: "done" | "current" | "next"; at: string | null };
 

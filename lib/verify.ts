@@ -1,4 +1,5 @@
 import type { FixVerdict } from "@/lib/ai/schemas";
+import type { Check } from "@/lib/intel/verification";
 
 /** The after photo must be taken within this distance of the issue (F7). */
 export const MAX_VERIFY_DISTANCE_M = 50;
@@ -25,4 +26,10 @@ export type VerifyResult = {
   sameLocation: boolean;
   issueResolved: boolean;
   confidence: "low" | "medium" | "high";
+  /** Feature 4: every check, the combined score and the outcome. */
+  checks: Check[];
+  score: number;
+  outcome: "verified" | "partial" | "failed";
+  headline: string;
+  residualIssues: string[];
 };

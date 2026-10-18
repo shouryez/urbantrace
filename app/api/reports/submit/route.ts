@@ -1,12 +1,19 @@
-// POST /api/reports/submit (F2, F4, F5, F6, F9, F12, F13, F14): files the corrected report through submit_report,
-// which merges it into an unverified issue of the same category within 30 m (or the confirmed
-// target) or creates a new one. A new issue is routed, and its letter is drafted after the reply.
+// POST /api/reports/submit: files a civic case (F2, F4, F5, F6, F9, F12, F13, F14; features 1, 3, 5, 7, 8, 9, 11, 16, 17).
+// Every problem in the case goes through submit_report, which merges it into an unverified issue of
+// the same category within 30 m (or the confirmed target) or creates a new one. New issues are
+// routed. After the reply: the case file and letter, embeddings, the issue's intelligence
+// (recurrence, evidence, priority, assignment), incident clustering around the spot and alerts.
 import { after } from "next/server";
 import { embed, issueEmbeddingText } from "@/lib/ai/ollama";
+import type { Category } from "@/lib/ai/schemas";
 import { reverseGeocode } from "@/lib/geocode";
+import { refreshAlerts, refreshIncidentsAround } from "@/lib/intel-server/incidents";
+import { refreshIssueIntel } from "@/lib/intel-server/issue";
+import { parseDurationClaim } from "@/lib/intel/evidence";
+import { segmentKey } from "@/lib/intel/geo";
 import { logEvent } from "@/lib/issue-detail";
-import { mlEnabled } from "@/lib/ml";
 import { generateLetter, requestOrigin } from "@/lib/letter";
+import { mlEnabled } from "@/lib/ml";
 import { MERGE_RADIUS_M, submitBodySchema, type SubmitResult } from "@/lib/reports";
 import { agencyFor, isCorporationId, responsibleBody, type Agency } from "@/lib/routing";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -25,9 +32,13 @@ export async function POST(request: Request) {
     return fail("Expected a JSON body", 400);
   }
   const parsed = submitBodySchema.safeParse(json);
-  if (!parsed.success) return fail("Invalid report", 400);
+  if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Invalid report", 400);
   const body = parsed.data;
   const db = supabaseAdmin();
+
+  // One entry per kind of problem, main one first.
+  const all = body.issues ?? [{ category: body.category!, severity: body.severity!, summary: body.summary!, frames: [] }];
+  const issues = all.filter((p, i) => all.findIndex((q) => q.category === p.category) === i);
 
   // A confirmed match must really be an unverified issue within 30 m of this report.
   if (body.targetIssueId !== null) {
@@ -42,88 +53,139 @@ export async function POST(request: Request) {
     }
   }
 
-  const { data, error } = await db
-    .rpc("submit_report", {
-      p_category: body.category,
-      p_severity: body.severity,
-      p_summary: body.summary,
-      p_lng: body.lng,
-      p_lat: body.lat,
-      p_photo_path: body.photoPath,
-      p_ai: body.ai ?? { manual: true },
-      p_device: body.deviceId,
-      p_force_new: body.forceNew,
-      p_target_issue_id: body.targetIssueId,
-    })
-    .single<SubmitReportRow>();
-  if (error || !data) {
-    console.error("submit_report failed:", error);
-    return fail("Could not file the report, try again", 502);
-  }
-  const issueId = data.out_issue_id;
+  const durationDays = parseDurationClaim(body.case?.duration_claim) ?? parseDurationClaim(body.transcript);
+  const consent = body.datasetConsent && mlEnabled(); // F14: only blurred photos, which the service guarantees
+  const segment = segmentKey(body.road, body);
+  const address = body.address ?? (await reverseGeocode(body.lat, body.lng));
 
-  if (body.userEdited || body.transcript || body.datasetConsent) {
-    // F14: consent counts only when the photo was blurred, which the service being on guarantees.
-    const consent = body.datasetConsent && mlEnabled();
+  const linked: SubmitResult["linked"] = [];
+  for (const [i, problem] of issues.entries()) {
+    const primary = i === 0;
+    // The frame that shows this problem, else the main image.
+    const frame = problem.frames.find((f) => f < body.framePaths.length);
+    const photoPath = frame !== undefined ? body.framePaths[frame]! : body.photoPath;
+    const { data, error } = await db
+      .rpc("submit_report", {
+        p_category: problem.category,
+        p_severity: problem.severity,
+        p_summary: problem.summary,
+        p_lng: body.lng,
+        p_lat: body.lat,
+        p_photo_path: photoPath,
+        p_ai: body.ai ?? (body.case ? { case: true } : { manual: true }),
+        p_device: body.deviceId,
+        p_force_new: primary ? body.forceNew : false,
+        p_target_issue_id: primary ? body.targetIssueId : null,
+      })
+      .single<SubmitReportRow>();
+    if (error || !data) {
+      console.error("submit_report failed:", error);
+      if (primary) return fail("Could not file the report, try again", 502);
+      continue;
+    }
+    const issueId = data.out_issue_id;
+    linked.push({ issueId, category: problem.category, merged: data.out_merged });
+
     await db
       .from("reports")
-      .update({ user_edited: body.userEdited, transcript: body.transcript, ...(consent ? { dataset_consent: true } : {}) })
-      .match({ issue_id: issueId, device_id: body.deviceId, photo_path: body.photoPath });
+      .update({
+        user_edited: body.userEdited,
+        transcript: body.transcript,
+        extraction: body.case,
+        language: body.language,
+        summary_local: primary ? body.summaryLocal : null,
+        severity_opinion: body.userEdited ? problem.severity : null,
+        gps_accuracy_m: body.gpsAccuracyM,
+        duration_claim_days: durationDays,
+        media: { kind: body.media, frames: body.framePaths, frame_times: body.frameTimes, lat: body.lat, lng: body.lng },
+        ...(consent ? { dataset_consent: true } : {}),
+      })
+      .match({ issue_id: issueId, device_id: body.deviceId });
+
+    // Accessibility (feature 10) applies to footpath-type problems and to whatever the main problem is.
+    const accessibility = primary || problem.category === "footpath" || problem.category === "drainage" ? body.accessibility : "none";
+    const updates: Record<string, unknown> = {};
+    if (!data.out_merged) {
+      updates.road_class = body.roadClass;
+      updates.segment_key = segment;
+      if (address) updates.address = address;
+    }
+    if (accessibility !== "none") updates.accessibility = accessibility;
+    // F13: a pothole's estimated depth; a merge only fills it in when the issue has none yet.
+    if (problem.category === "pothole" && body.depthClass) updates.depth_class = body.depthClass;
+    if (Object.keys(updates).length) {
+      let q = db.from("issues").update(updates).eq("id", issueId);
+      if (data.out_merged && updates.depth_class) q = q.is("depth_class", null);
+      const { error: upErr } = await q;
+      if (upErr) console.error(`Updating issue ${issueId} failed:`, upErr);
+    }
+
+    if (!data.out_merged) {
+      await routeNewIssue(issueId, problem.category, body);
+      await logEvent(issueId, "triaged", { media: body.media, problems: issues.length, language: body.language });
+    }
   }
 
-  // F13: a pothole's estimated depth; a merge only fills it in when the issue has none yet.
-  if (body.category === "pothole" && body.depthClass) {
-    let update = db.from("issues").update({ depth_class: body.depthClass }).eq("id", issueId);
-    if (data.out_merged) update = update.is("depth_class", null);
-    const { error: depthError } = await update;
-    if (depthError) console.error(`Saving depth for issue ${issueId} failed:`, depthError);
-  }
+  const main = linked[0]!;
+  const origin = requestOrigin(request);
+  const newIds = linked.filter((l) => !l.merged).map((l) => l.issueId);
 
-  let bodyName: string | null;
-  if (!data.out_merged) {
-    bodyName = await routeNewIssue(issueId, body);
-    const origin = requestOrigin(request);
-    // F6: draft the letter, and F12: embed the summary, without holding up the success screen.
-    after(async () => {
+  // Recurrence and priority now, so the success screen can say "this is back".
+  await refreshIssueIntel(main.issueId);
+  const { data: mainRow } = await db
+    .from("issues")
+    .select("backer_count, agency, corporation_id, recurrence_of, repair_lasted_days")
+    .eq("id", main.issueId)
+    .single<{ backer_count: number; agency: Agency | null; corporation_id: string | null; recurrence_of: number | null; repair_lasted_days: number | null }>();
+
+  after(async () => {
+    for (const l of linked.slice(1)) await refreshIssueIntel(l.issueId).catch((e: unknown) => console.error(e));
+    try {
+      await refreshIncidentsAround(body.lat, body.lng);
+      await refreshAlerts();
+    } catch (err) {
+      console.error("Incident detection failed:", err);
+    }
+    for (const id of newIds) {
+      const problem = issues[linked.findIndex((l) => l.issueId === id)]!;
       try {
-        await generateLetter(issueId, origin);
+        const vector = await embed(issueEmbeddingText(problem.category, problem.summary));
+        await db.from("issues").update({ embedding: JSON.stringify(vector) }).eq("id", id);
       } catch (err) {
-        console.error(`Letter for issue ${issueId} failed:`, err);
+        console.error(`Embedding for issue ${id} failed:`, err);
       }
-    });
-    after(async () => {
+    }
+    // F6 and feature 17: the case file and letter, after the analysis so it can cite it.
+    for (const id of newIds) {
       try {
-        const vector = await embed(issueEmbeddingText(body.category, body.summary));
-        const { error: embedError } = await db.from("issues").update({ embedding: JSON.stringify(vector) }).eq("id", issueId);
-        if (embedError) throw embedError;
+        await generateLetter(id, origin);
       } catch (err) {
-        console.error(`Embedding for issue ${issueId} failed:`, err);
+        console.error(`Case file for issue ${id} failed:`, err);
       }
-    });
-  } else {
-    const { data: issue } = await db
-      .from("issues")
-      .select("agency, corporation_id")
-      .eq("id", issueId)
-      .single<{ agency: Agency | null; corporation_id: string | null }>();
-    bodyName = issue?.agency ? responsibleBody(issue.agency, issue.corporation_id) : null;
-  }
+    }
+  });
 
-  const { data: issue } = await db.from("issues").select("backer_count").eq("id", issueId).single<{ backer_count: number }>();
-  const result: SubmitResult = { issueId, merged: data.out_merged, backerCount: issue?.backer_count ?? 1, bodyName };
+  const result: SubmitResult = {
+    issueId: main.issueId,
+    merged: main.merged,
+    backerCount: mainRow?.backer_count ?? 1,
+    bodyName: mainRow?.agency ? responsibleBody(mainRow.agency, mainRow.corporation_id) : null,
+    linked,
+    recurrence:
+      mainRow?.recurrence_of && mainRow.repair_lasted_days !== null
+        ? { previousIssueId: mainRow.recurrence_of, lastedDays: mainRow.repair_lasted_days }
+        : null,
+  };
   return Response.json(result);
 }
 
 /**
  * F5: agency by category; for corporation issues, the corporation and ward from the boundaries,
- * falling back to the user's pick. Saves them with the address and logs a routed event.
+ * falling back to the user's pick. Saves them and logs a routed event.
  */
-async function routeNewIssue(
-  issueId: number,
-  body: { category: Parameters<typeof agencyFor>[0]; lat: number; lng: number; corporationId: string | null },
-): Promise<string> {
+async function routeNewIssue(issueId: number, category: Category, body: { lat: number; lng: number; corporationId: string | null }): Promise<void> {
   const db = supabaseAdmin();
-  const agency = agencyFor(body.category);
+  const agency = agencyFor(category);
   let corporationId: string | null = null;
   let wardId: number | null = null;
   if (agency === "corporation") {
@@ -133,13 +195,7 @@ async function routeNewIssue(
     wardId = located?.ward_id ?? null;
   }
   const bodyName = responsibleBody(agency, corporationId);
-  const address = await reverseGeocode(body.lat, body.lng); // cached by analyze
-
-  const { error } = await db
-    .from("issues")
-    .update({ agency, corporation_id: corporationId, ward_id: wardId, ...(address ? { address } : {}) })
-    .eq("id", issueId);
+  const { error } = await db.from("issues").update({ agency, corporation_id: corporationId, ward_id: wardId, stage: "routed" }).eq("id", issueId);
   if (error) console.error(`Routing issue ${issueId} failed:`, error);
   await logEvent(issueId, "routed", { agency, corporation_id: corporationId, body: bodyName });
-  return bodyName;
 }

@@ -26,6 +26,8 @@ MAX_IMAGE_BYTES = 15 * 1024 * 1024
 
 _lock = threading.Lock()
 _models: dict[str, Any] = {}
+# OpenCV's face detector keeps per-call state (its input size), so detection runs one image at a time.
+_detect_lock = threading.Lock()
 
 
 def _model(name: str) -> Any:
@@ -119,13 +121,13 @@ def blur(image: UploadFile = File(...)) -> Response:
     h, w = img.shape[:2]
 
     faces = _model("faces")
-    faces.setInputSize((w, h))
-    _, found = faces.detect(img)
+    plates = _model("plates")
+    with _detect_lock:
+        faces.setInputSize((w, h))
+        _, found = faces.detect(img)
+        plate_results = plates.predict(img)
     face_boxes = [] if found is None else [(f[0], f[1], f[0] + f[2], f[1] + f[3]) for f in found]
-
-    plate_boxes = [
-        (d.bounding_box.x1, d.bounding_box.y1, d.bounding_box.x2, d.bounding_box.y2) for d in _model("plates").predict(img)
-    ]
+    plate_boxes = [(d.bounding_box.x1, d.bounding_box.y1, d.bounding_box.x2, d.bounding_box.y2) for d in plate_results]
 
     for box in face_boxes + plate_boxes:
         _blur_box(img, *box)
