@@ -1,11 +1,13 @@
 import { z } from "zod";
 
-// Mirrors the issue_category and issue_status enums in supabase/migrations/0001_schema.sql.
+// Mirrors the issue_category and issue_status enums (0001_schema.sql; drainage and footpath from 0007).
 export const CATEGORIES = [
   "pothole",
   "garbage",
   "streetlight",
   "waterlogging",
+  "drainage",
+  "footpath",
   "water_leak_sewage",
   "power_hazard",
   "other",
@@ -18,6 +20,8 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   garbage: "Garbage",
   streetlight: "Streetlight",
   waterlogging: "Waterlogging",
+  drainage: "Open or blocked drain",
+  footpath: "Footpath damage",
   water_leak_sewage: "Water leak or sewage",
   power_hazard: "Power line hazard",
   other: "Other",

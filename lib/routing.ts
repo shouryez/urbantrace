@@ -25,6 +25,8 @@ const AGENCY_BY_CATEGORY: Record<Category, Agency> = {
   garbage: "corporation",
   streetlight: "corporation",
   waterlogging: "corporation",
+  drainage: "corporation", // storm water drains are the corporation's; sewage lines are BWSSB's
+  footpath: "corporation",
   other: "corporation",
   water_leak_sewage: "BWSSB",
   power_hazard: "BESCOM",

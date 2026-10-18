@@ -1,6 +1,8 @@
 import {
   CircleQuestionMark,
   Droplets,
+  Footprints,
+  Waves,
   Lightbulb,
   TrafficCone,
   Trash,
@@ -15,6 +17,8 @@ export const CATEGORY_META: Record<Category, { label: string; Icon: LucideIcon }
   garbage: { label: L.garbage, Icon: Trash },
   streetlight: { label: L.streetlight, Icon: Lightbulb },
   waterlogging: { label: L.waterlogging, Icon: WavesHorizontal },
+  drainage: { label: L.drainage, Icon: Waves },
+  footpath: { label: L.footpath, Icon: Footprints },
   water_leak_sewage: { label: L.water_leak_sewage, Icon: Droplets },
   power_hazard: { label: L.power_hazard, Icon: Zap },
   other: { label: L.other, Icon: CircleQuestionMark },

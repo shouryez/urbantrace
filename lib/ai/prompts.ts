@@ -9,7 +9,9 @@ category, one of:
 - garbage: dumped waste, overflowing bins, litter piles
 - streetlight: a broken, missing or unlit street light
 - waterlogging: standing rain water on a road or footpath
-- water_leak_sewage: a leaking water pipe, open drain or overflowing sewage
+- drainage: an open, broken, choked or overflowing storm water drain
+- footpath: a broken, missing or obstructed footpath or pavement
+- water_leak_sewage: a leaking water pipe or overflowing sewage
 - power_hazard: fallen, hanging or exposed electric lines, or a damaged transformer or pole
 - other: a public infrastructure problem that fits none of the above
 
