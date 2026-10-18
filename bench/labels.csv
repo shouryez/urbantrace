@@ -1,0 +1,52 @@
+# One row per photo in bench/photos/. category: pothole, garbage, streetlight, waterlogging, water_leak_sewage, power_hazard, other.
+# severity 1 to 5. is_civic_issue false for the non issues (selfie, classroom); their category and severity are ignored.
+# group (optional): photos of the same real problem share an id, to tune the F12 threshold.
+# credit: photo author, licence and source, shown with seeded demo issues.
+file,category,severity,is_civic_issue,group,credit
+pothole-01.jpg,pothole,4,true,A,Gangaasoonu / CC BY-SA 4.0 / Wikimedia Commons
+pothole-02.jpg,pothole,4,true,A,Gangaasoonu / CC BY-SA 4.0 / Wikimedia Commons
+pothole-04.jpg,pothole,3,true,,KEmel49 / CC BY-SA 4.0 / Wikimedia Commons
+pothole-05.jpg,pothole,3,true,,KEmel49 / CC BY-SA 4.0 / Wikimedia Commons
+pothole-06.jpg,pothole,4,true,,Slyronit / CC BY-SA 4.0 / Wikimedia Commons
+pothole-08.jpg,pothole,3,true,,Dan crxs / CC BY 4.0 / Wikimedia Commons
+pothole-15.jpg,pothole,3,true,,Msofiaa / CC BY 4.0 / Wikimedia Commons
+pothole-19.jpg,pothole,2,true,,PilinsaurioRex / CC0 / Wikimedia Commons
+pothole-22.jpg,pothole,3,true,B,Wrleo / CC BY-SA 4.0 / Wikimedia Commons
+pothole-23.jpg,pothole,3,true,B,Wrleo / CC BY-SA 4.0 / Wikimedia Commons
+pothole-24.jpg,pothole,2,true,,Nuggyland / CC BY 4.0 / Wikimedia Commons
+pothole-36.jpg,pothole,3,true,,AnonymousUnknown author / CC0 / Wikimedia Commons
+pothole-37.jpg,pothole,3,true,,AnonymousUnknown author / CC0 / Wikimedia Commons
+pothole-39.jpg,pothole,3,true,,Aletsssss / CC BY 4.0 / Wikimedia Commons
+pothole-46.jpg,other,1,false,,Mallikarjunasj / CC0 / Wikimedia Commons
+repair-42.jpg,pothole,4,true,C,MassDOT / Public domain / Wikimedia Commons
+repair-43.jpg,pothole,4,true,C,MassDOT / Public domain / Wikimedia Commons
+repair-41.jpg,other,1,false,,MassDOT / Public domain / Wikimedia Commons
+garbage-01.jpg,garbage,3,true,,Surya Prakash.S.A. / CC BY-SA 3.0 / Wikimedia Commons
+garbage-04.jpg,garbage,2,true,,Rakesh.5suthar / CC BY-SA 3.0 / Wikimedia Commons
+garbage-07.jpg,garbage,3,true,,Jay.Jarosz / CC BY-SA 4.0 / Wikimedia Commons
+garbage-10.jpg,garbage,4,true,,Marcin Białek / CC BY-SA 4.0 / Wikimedia Commons
+garbage-12.jpg,garbage,3,true,,Capankajsmilyo / CC BY-SA 4.0 / Wikimedia Commons
+garbage-15.jpg,garbage,3,true,,Rohan11Prakash / CC BY-SA 4.0 / Wikimedia Commons
+garbage-42.jpg,garbage,4,true,,Barry Pousman from New York NY / CC BY 2.0 / Wikimedia Commons
+garbage-47.jpg,garbage,3,true,,James Emery from Douglasville United States / CC BY 2.0 / Wikimedia Commons
+waterlogging-09.jpg,waterlogging,3,true,,Akshit Sharma / CC BY-SA 4.0 / Wikimedia Commons
+waterlogging-14.jpg,waterlogging,2,true,,Nskjnv / CC BY 4.0 / Wikimedia Commons
+waterlogging-24.jpg,waterlogging,4,true,,Mohammed Mubashir / CC BY-SA 4.0 / Wikimedia Commons
+waterlogging-25.jpg,waterlogging,2,true,,Prabas007 / CC BY-SA 4.0 / Wikimedia Commons
+sewage-20.jpg,water_leak_sewage,4,true,D,KEmel49 / CC BY-SA 4.0 / Wikimedia Commons
+sewage-21.jpg,water_leak_sewage,4,true,D,KEmel49 / CC BY-SA 4.0 / Wikimedia Commons
+sewage-10.jpg,water_leak_sewage,3,true,,Kenneth Paik / Public domain / Wikimedia Commons
+power-35.jpg,power_hazard,4,true,,David Brossard / CC BY-SA 2.0 / Wikimedia Commons
+power-40.jpg,power_hazard,3,true,,Biswarup Ganguly / CC BY 3.0 / Wikimedia Commons
+power-27.jpg,power_hazard,3,true,,Dmitry G / CC BY-SA 3.0 / Wikimedia Commons
+power-39.jpg,power_hazard,2,true,,Sharon Hahn Darlin / CC BY 2.0 / Wikimedia Commons
+streetlight-01.jpg,streetlight,3,true,,Joxemai / CC BY-SA 4.0 / Wikimedia Commons
+streetlight-09.jpg,streetlight,4,true,,Niera / CC BY-SA 4.0 / Wikimedia Commons
+streetlight-15.jpg,streetlight,4,true,,Kürschner (talk) 17:03 13 March 2024 (UTC) / CC0 / Wikimedia Commons
+streetlight-42.jpg,streetlight,2,true,,ŠJů / CC BY 4.0 / Wikimedia Commons
+streetlight-43.jpg,streetlight,3,true,,ŠJů / CC BY 4.0 / Wikimedia Commons
+nonissue-16.jpg,other,1,false,,Nazdaariyantv / CC BY-SA 4.0 / Wikimedia Commons
+nonissue-18.jpg,other,1,false,,Web Summit / CC BY 2.0 / Wikimedia Commons
+nonissue-26.jpg,other,1,false,,Rcheth / CC BY-SA 3.0 / Wikimedia Commons
+nonissue-31.jpg,other,1,false,,Intelligentguy89 / CC BY-SA 3.0 / Wikimedia Commons
+nonissue-41.jpg,other,1,false,,Immanuel Giel / CC BY-SA 4.0 / Wikimedia Commons

@@ -1,0 +1,8 @@
+# Before and after photos of the same spot, both in bench/photos/. fixed: true if the after photo shows the repair.
+before,after,fixed
+repair-42.jpg,repair-41.jpg,true
+repair-43.jpg,repair-41.jpg,true
+pothole-01.jpg,pothole-02.jpg,false
+pothole-23.jpg,pothole-22.jpg,false
+repair-42.jpg,pothole-46.jpg,false
+pothole-08.jpg,garbage-01.jpg,false
