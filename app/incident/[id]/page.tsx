@@ -2,12 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { ArrowLeft, GitFork, Network, Siren } from "lucide-react";
+import { GitFork, Network, Siren } from "lucide-react";
 import { ScenarioPanel } from "@/components/case/Interactive";
 import { Section } from "@/components/case/Panels";
 import { IssueCard } from "@/components/issue/IssueCard";
 import { RootCauseGraph } from "@/components/intel/RootCauseGraph";
-import { buttonClasses } from "@/components/ui/Button";
+import { BackLink } from "@/components/ui/BackLink";
 import { CATEGORY_LABELS, type Category } from "@/lib/ai/schemas";
 import { NODE_LABELS, type CausalNode } from "@/lib/intel/causal";
 import { getIncident } from "@/lib/incidents-query";
@@ -101,9 +101,7 @@ async function IncidentView({ params }: { params: PageProps<"/incident/[id]">["p
 export default function IncidentPage({ params }: PageProps<"/incident/[id]">) {
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-6">
-      <Link href="/incidents" className={buttonClasses("ghost", "self-start px-0")}>
-        <ArrowLeft size={16} aria-hidden /> All incidents
-      </Link>
+      <BackLink fallback="/incidents" label="Back" />
       <Suspense fallback={<div className="skeleton h-64 rounded-card" />}>
         <IncidentView params={params} />
       </Suspense>

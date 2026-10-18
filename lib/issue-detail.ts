@@ -1,13 +1,16 @@
 // Server only: one issue as a full civic case — reports and their evidence, verifications and their
 // checks, trail, intelligence (priority, evidence, assignment, recurrence, incident) and the case file.
+import { z } from "zod";
 import {
   caseFileSchema,
   complaintLetterSchema,
+  followUpAnswerSchema,
   scenarioSchema,
   type CaseFile,
   type CaseReading,
   type Category,
   type ComplaintLetter,
+  type FollowUpAnswer,
   type FixVerdict,
   type Scenario,
   type Status,
@@ -18,6 +21,7 @@ import type { PriorityResult } from "@/lib/intel/priority";
 import type { Check } from "@/lib/intel/verification";
 import { responsibleBody, type Agency } from "@/lib/routing";
 import { photoPublicUrl, supabaseAdmin } from "@/lib/supabase/server";
+import { getWard, type WardProfile } from "@/lib/wards";
 
 export type IssueEvent = {
   id: number;
@@ -52,6 +56,8 @@ export type CaseReport = {
   transcript: string | null;
   language: string | null;
   summaryLocal: string | null;
+  /** The reporter's answers to the follow-up questions. */
+  followUp: FollowUpAnswer[];
 };
 
 export type IssueDetail = {
@@ -66,8 +72,13 @@ export type IssueDetail = {
   agency: Agency | null;
   corporationId: string | null;
   bodyName: string | null;
-  /** Contact email of the corporation, once confirmed and stored; null otherwise. */
+  /** Where the complaint email goes: the ward's zone officer when the ward is known, else the corporation. */
   bodyEmail: string | null;
+  bodyCc: string[];
+  /** Who bodyEmail reaches, e.g. "Joint Commissioner, Bommanahalli zone". */
+  bodyContact: string | null;
+  /** The ward the issue is in, with who answers for it; null until the wards are loaded. */
+  ward: WardProfile | null;
   backerCount: number;
   letter: ComplaintLetter | null;
   caseFile: CaseFile | null;
@@ -108,6 +119,7 @@ export type IssueDetail = {
 
 type DetailRow = {
   id: number;
+  ward_id: number | null;
   category: Category;
   severity: number;
   summary: string;
@@ -194,6 +206,8 @@ export async function getIssue(id: number): Promise<IssueDetail | null> {
       : Promise.resolve({ data: null }),
     db.from("citizen_confirmations").select("fixed").eq("issue_id", id),
   ]);
+  const ward = row.ward_id !== null ? await getWard(row.ward_id).catch(() => null) : null;
+  const wardContact = row.agency === "corporation" && ward?.contact.to ? ward.contact : null;
 
   const reportRows = (reports.data ?? []) as ReportRow[];
   const first = reportRows.find((r) => r.photo_path);
@@ -212,7 +226,10 @@ export async function getIssue(id: number): Promise<IssueDetail | null> {
     agency: row.agency,
     corporationId: row.corporation_id,
     bodyName: row.agency ? responsibleBody(row.agency, row.corporation_id) : null,
-    bodyEmail: corporation.data?.email ?? null,
+    bodyEmail: wardContact?.to ?? corporation.data?.email ?? null,
+    bodyCc: wardContact?.cc ?? [],
+    bodyContact: wardContact?.toName ?? (corporation.data?.email ? "Commissioner" : null),
+    ward,
     backerCount: row.backer_count,
     letter: parseLetter(row.complaint_letter),
     caseFile: caseFile.success ? caseFile.data : null,
@@ -243,6 +260,7 @@ export async function getIssue(id: number): Promise<IssueDetail | null> {
       transcript: r.transcript,
       language: r.language,
       summaryLocal: r.summary_local,
+      followUp: z.array(followUpAnswerSchema).catch([]).parse((r.extraction as { follow_up?: unknown } | null)?.follow_up ?? []),
     })),
     verifications: ((verifications.data ?? []) as VerificationRow[]).map((v) => ({
       id: v.id,

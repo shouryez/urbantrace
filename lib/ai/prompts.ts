@@ -136,7 +136,9 @@ observed_condition: what the evidence shows, in plain formal English, using only
 safety_implications: who is at risk and how, from the facts given.
 supporting_evidence: short items such as "Video frames 2, 4 and 5", "7 independent reports", "Recurring after a repair 42 days ago".
 recommended_inspection: what an inspector should check first, from the facts.
-body: a formal, polite letter under 200 words to the responsible body that cites the location, the number of residents backing it, the evidence and the issue link, asks for repair and ends with "Residents of Bengaluru, via UrbanTrace".
+research_summary: two to four sentences that pull together the evidence, the residents' answers to follow-up questions and the history of this place (earlier reports, repairs, rain, related incidents) into what is most likely going on and how urgent it is.
+key_findings: up to 6 short findings, each one fact from the inputs that matters for the repair, such as "Reported as present for several months", "Returned 147 days after the last repair", "School children walk here".
+body: a formal, polite letter under 220 words to the responsible body that cites the location, the ward, how long the problem has been there, the number of residents backing it, the key findings, the evidence and the issue link, asks for repair and ends with "Residents of Bengaluru, via UrbanTrace".
 
 Never invent facts: no names, phone numbers, reference numbers, dates of earlier complaints or details not in the facts.`;
 
@@ -149,6 +151,11 @@ export type CaseFileFacts = LetterFacts & {
   incident: string | null;
   recurrence: string | null;
   department: string | null;
+  /** Residents' answers to the follow-up questions, as "question: answer". */
+  answers: string[];
+  /** The history of this spot in plain lines. */
+  history: string[];
+  ward: string | null;
 };
 
 export function caseFileUser(f: CaseFileFacts): string {
@@ -160,7 +167,28 @@ export function caseFileUser(f: CaseFileFacts): string {
 - Related reports nearby: ${f.relatedReports}
 - Part of incident: ${f.incident ?? "no"}
 - Recurrence: ${f.recurrence ?? "no repair history"}
-- Department and work: ${f.department ?? "not assigned"}`;
+- Department and work: ${f.department ?? "not assigned"}
+- Ward: ${f.ward ?? "not known"}
+- Residents' answers: ${f.answers.join("; ") || "none"}
+- History of this place: ${f.history.join("; ") || "no earlier records"}`;
+}
+
+// Follow-up questions: what the evidence cannot show.
+export const FOLLOW_UP_SYSTEM = `You help residents of Bengaluru report civic problems. The model has already read their photo, video or voice note.
+Ask 2 to 4 short follow-up questions that only someone on the spot can answer and that would change how urgently or how the authority should act.
+Good questions: whether anyone has been hurt or a vehicle damaged, whether it gets worse when it rains, who uses the spot (school children, elderly, wheelchair users, a hospital entrance), whether it blocks the road or footpath, whether it was complained about before, the time of day it is worst.
+Do not ask how long it has been there (that is asked separately), and do not ask anything the evidence already shows.
+Reply only with JSON that matches the given schema.
+
+id: a short snake_case id. question: at most 120 characters, plain English. kind: "choice" with 2 to 5 short options, or "text" with no options for a short free answer. why: one short reason the answer matters.`;
+
+export function followUpUser(f: { problems: string[]; address: string | null; hazards: string[]; accessibility: string; transcript: string | null }): string {
+  return `Case read from the evidence:
+- Problems: ${f.problems.join("; ")}
+- Place: ${f.address ?? "not known"}
+- Risks seen: ${f.hazards.join("; ") || "none stated"}
+- Accessibility impact: ${f.accessibility}
+- What the reporter said: ${f.transcript ?? "nothing"}`;
 }
 
 // Scenario (feature 14): what happens if we don't fix this.

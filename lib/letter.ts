@@ -11,8 +11,10 @@ import {
   type CaseFile,
   type ComplaintLetter,
 } from "@/lib/ai/schemas";
+import { placeHistory } from "@/lib/intel-server/place";
 import { getIssue } from "@/lib/issue-detail";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { recentRainMm } from "@/lib/weather";
 
 /** Public origin of this request, so the letter's issue link works through the tunnel. */
 export function requestOrigin(request: Request): string {
@@ -23,6 +25,26 @@ export function requestOrigin(request: Request): string {
 }
 
 /** Compiles the case file and letter with the current evidence and stores them on the issue. */
+/** The history of the spot, as short plain lines for the case file: earlier reports, repairs, rain. */
+async function historyLines(issue: NonNullable<Awaited<ReturnType<typeof getIssue>>>): Promise<string[]> {
+  try {
+    const h = await placeHistory({ lat: issue.lat, lng: issue.lng }, 60, issue.segmentKey);
+    const others = h.issues.filter((i) => i.id !== issue.id);
+    const lines: string[] = [];
+    if (others.length) lines.push(`${others.length} other report${others.length > 1 ? "s" : ""} within 60 m since ${others.map((i) => i.createdAt.slice(0, 7)).sort()[0]}`);
+    const repaired = others.filter((i) => i.verifiedAt);
+    if (repaired.length) lines.push(`${repaired.length} verified repair${repaired.length > 1 ? "s" : ""} here before`);
+    if (h.segment.lastRepairDaysAgo !== null) lines.push(`Last repair on this road segment ${h.segment.lastRepairDaysAgo} days ago`);
+    if (h.rain.pattern === "strong" || h.rain.pattern === "some") lines.push(h.rain.summary);
+    const rain = await recentRainMm(7).catch(() => 0);
+    if (rain >= 10) lines.push(`${Math.round(rain)} mm of rain in the last 7 days`);
+    return lines;
+  } catch (err) {
+    console.error("Place history for the case file failed:", err);
+    return [];
+  }
+}
+
 export async function generateLetter(issueId: number, origin: string): Promise<ComplaintLetter | null> {
   const issue = await getIssue(issueId);
   if (!issue || !issue.bodyName) return null;
@@ -82,6 +104,9 @@ export async function generateLetter(issueId: number, origin: string): Promise<C
     incident,
     recurrence,
     department: issue.assignment ? `${issue.assignment.department}, ${issue.assignment.workType}` : null,
+    answers: [...new Set(issue.reports.flatMap((r) => r.followUp.map((a) => `${a.question} ${a.answer}`)))].slice(0, 12),
+    history: await historyLines(issue),
+    ward: issue.ward ? `${issue.ward.name} (ward ${issue.ward.number}, ${issue.ward.zoneName} zone)` : null,
   };
 
   let caseFile: CaseFile | null = null;

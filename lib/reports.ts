@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ACCESSIBILITY, CATEGORIES, caseReadingSchema, photoReadingSchema, type CaseReading, type Category, type PhotoReading } from "@/lib/ai/schemas";
+import { ACCESSIBILITY, CATEGORIES, caseReadingSchema, followUpAnswerSchema, photoReadingSchema, type CaseReading, type Category, type PhotoReading } from "@/lib/ai/schemas";
 import { CORPORATION_IDS, type CorporationId } from "@/lib/routing";
 
 /** Storage path of a cleaned report photo or video frame, as written by the analyze route. */
@@ -124,6 +124,8 @@ export const submitBodySchema = latLngSchema
     road: z.string().trim().max(120).nullable().default(null),
     roadClass: z.string().trim().max(40).nullable().default(null),
     address: z.string().trim().max(300).nullable().default(null),
+    /** Answers to the follow-up questions; the duration answer sets duration_claim_days. */
+    followUp: z.array(followUpAnswerSchema).max(6).default([]),
   })
   .refine((b) => b.issues || (b.category && b.severity && b.summary), { message: "Send issues, or category, severity and summary" })
   .refine((b) => b.photoPath || b.media === "voice", { message: "A photo or video is needed unless this is a voice report" });

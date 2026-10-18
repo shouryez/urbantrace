@@ -14,7 +14,8 @@
     "seed:demo": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./tests/alias.mjs scripts/seed-demo.ts",
     "seed:boundaries": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/seed-boundaries.ts",
     "export-dataset": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/export-dataset.ts",
-    "postinstall": "node scripts/copy-maplibre.mjs"
+    "postinstall": "node scripts/copy-maplibre.mjs",
+    "seed:wards": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./tests/alias.mjs scripts/seed-wards.ts"
   },
   "dependencies": {
     "@deck.gl/aggregation-layers": "^9.4.0",

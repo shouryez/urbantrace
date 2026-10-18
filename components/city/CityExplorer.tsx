@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type * as maplibregl from "maplibre-gl";
-import { Accessibility, ArrowLeft, Clock, Crosshair, Layers, Loader2, MapPin, Navigation, Plus, Route as RouteIcon, Siren, X } from "lucide-react";
+import { Accessibility, Clock, Crosshair, Layers, Loader2, MapPin, Navigation, Plus, Route as RouteIcon, Siren, X } from "lucide-react";
 import type { CityIncident, CityIssue, CityLayers } from "@/components/city/CityMap";
 import { geohash } from "@/lib/intel/geo";
 import type { RankedRoute } from "@/lib/intel/route";
@@ -119,12 +119,9 @@ export function CityExplorer({ issues, incidents: initialIncidents }: { issues: 
       />
 
       {/* Top bar */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-col gap-2 p-3 md:p-4">
+      <div className="pointer-events-none absolute inset-x-0 top-[76px] flex flex-col gap-2 p-3 md:top-20 md:p-4">
         <div className="flex items-start justify-between gap-2">
           <div className="pointer-events-auto flex items-center gap-2">
-            <Link href="/" aria-label="Home" className={`${glass} flex size-11 items-center justify-center !rounded-full`}>
-              <ArrowLeft size={18} aria-hidden />
-            </Link>
             <div className={`${glass} hidden px-4 py-2 sm:block`}>
               <p className="font-display text-sm font-semibold">Bengaluru, live</p>
               <p className="num text-xs text-fog-300">
@@ -162,7 +159,7 @@ export function CityExplorer({ issues, incidents: initialIncidents }: { issues: 
       </div>
 
       {/* Bottom: time machine and side panel */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col gap-2 p-3 md:flex-row md:items-end md:justify-between md:p-4">
+      <div className="pointer-events-none absolute inset-x-0 bottom-24 flex flex-col gap-2 p-3 md:bottom-0 md:flex-row md:items-end md:justify-between md:p-4">
         {start < end && (
           <div className={`${glass} pointer-events-auto flex w-full flex-col gap-1 px-4 py-3 md:max-w-md`}>
             <label htmlFor="time-machine" className="flex items-center justify-between text-xs font-bold">
@@ -186,13 +183,13 @@ export function CityExplorer({ issues, incidents: initialIncidents }: { issues: 
             />
           </div>
         )}
-        <Link href="/report" className="pointer-events-auto flex items-center justify-center gap-2 self-end rounded-full bg-signal px-5 py-3 font-bold text-ink-950 shadow-2xl">
+        <Link href="/report" className="pointer-events-auto hidden items-center justify-center gap-2 self-end rounded-full bg-signal px-5 py-3 font-bold text-ink-950 shadow-2xl md:flex">
           <Plus size={18} aria-hidden /> Report
         </Link>
       </div>
 
       {panel && (
-        <aside className={`${glass} absolute inset-x-3 bottom-24 z-10 max-h-[60svh] overflow-y-auto p-5 md:inset-x-auto md:top-24 md:right-4 md:bottom-auto md:w-96`}>
+        <aside className={`${glass} absolute inset-x-3 bottom-24 z-10 max-h-[55svh] overflow-y-auto p-5 md:inset-x-auto md:top-40 md:right-4 md:bottom-auto md:w-96`}>
           <button type="button" aria-label="Close" onClick={() => (setPanel(null), setRoutes([]))} className="absolute top-3 right-3 rounded-full p-1.5 text-fog-300 hover:bg-white/8">
             <X size={16} aria-hidden />
           </button>

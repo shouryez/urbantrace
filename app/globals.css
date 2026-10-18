@@ -412,3 +412,10 @@
 .marquee {
   animation: marquee 40s linear infinite;
 }
+
+/* Phones pinch to zoom; the zoom buttons would sit on the time machine */
+@media (max-width: 767px) {
+  .maplibregl-ctrl-bottom-right .maplibregl-ctrl-group {
+    display: none;
+  }
+}

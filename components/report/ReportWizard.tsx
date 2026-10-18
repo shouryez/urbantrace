@@ -7,9 +7,11 @@ import { Button } from "@/components/ui/Button";
 import { getDeviceId } from "@/lib/device";
 import type { LatLng } from "@/lib/geo";
 import type { AnalyzeResult, MediaKind, NearbyIssue, SubmitBody, SubmitResult } from "@/lib/reports";
+import type { FollowUpAnswer } from "@/lib/ai/schemas";
 import { CaseDetected } from "./CaseDetected";
 import { Done } from "./Done";
 import { EvidencePicker, type Evidence } from "./EvidencePicker";
+import { FollowUp } from "./FollowUp";
 import { Locate } from "./Locate";
 import { ResultCard, type ReportValues } from "./ResultCard";
 import { SameProblem } from "./SameProblem";
@@ -50,6 +52,7 @@ export function ReportWizard({ targetId, mlOn }: ReportWizardProps) {
   const [position, setPosition] = useState<LatLng | null>(null);
   const [analysis, setAnalysis] = useState<Analysis>({ state: "idle" });
   const [included, setIncluded] = useState<Set<number>>(new Set());
+  const [followUp, setFollowUp] = useState<FollowUpAnswer[]>([]);
   // similar: matched by meaning (F12) rather than by category within 30 m (F4).
   const [pending, setPending] = useState<{ values: ReportValues; match: NearbyIssue; similar: boolean } | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -125,6 +128,7 @@ export function ReportWizard({ targetId, mlOn }: ReportWizardProps) {
       road: r.road,
       roadClass: r.roadClass,
       address: r.address,
+      followUp,
       forceNew: choice.forceNew ?? false,
       targetIssueId: choice.targetIssueId ?? null,
     };
@@ -173,6 +177,7 @@ export function ReportWizard({ targetId, mlOn }: ReportWizardProps) {
     setPosition(null);
     setAnalysis({ state: "idle" });
     setPending(null);
+    setFollowUp([]);
     setSubmitError(null);
     setResult(null);
     setStep(0);
@@ -242,6 +247,14 @@ export function ReportWizard({ targetId, mlOn }: ReportWizardProps) {
                         return next;
                       })
                     }
+                  />
+                  <FollowUp
+                    problems={(analysis.result.case?.issues ?? [{ category: analysis.result.reading?.category ?? "other", summary: analysis.result.reading?.summary ?? "civic problem" }]).map((p) => `${p.category}: ${p.summary}`)}
+                    address={analysis.result.address}
+                    hazards={analysis.result.case?.hazards ?? []}
+                    accessibility={analysis.result.case?.accessibility ?? "none"}
+                    transcript={transcript.trim() || null}
+                    onChange={setFollowUp}
                   />
                   <ResultCard
                     reading={analysis.result.reading}

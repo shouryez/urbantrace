@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { ArrowLeft, History, Network, ScanSearch } from "lucide-react";
+import { History, Network, ScanSearch } from "lucide-react";
 import { CitizenConfirm, ScenarioPanel, TimeMachinePanel } from "@/components/case/Interactive";
 import { AssignmentPanel, CaseFilePanel, EvidenceMedia, EvidencePanel, JourneyPanel, PriorityPanel, Section } from "@/components/case/Panels";
 import { BeforeAfter } from "@/components/issue/BeforeAfter";
@@ -11,6 +11,8 @@ import { timeAgo } from "@/components/issue/IssueCard";
 import { LetterCard } from "@/components/issue/LetterCard";
 import { LiveBackers } from "@/components/issue/LiveBackers";
 import { TraceTimeline } from "@/components/issue/TraceTimeline";
+import { BackLink } from "@/components/ui/BackLink";
+import { WardCard } from "@/components/ward/WardCard";
 import { buttonClasses } from "@/components/ui/Button";
 import { CategoryChip } from "@/components/ui/CategoryChip";
 import { SeverityMeter } from "@/components/ui/SeverityMeter";
@@ -108,8 +110,10 @@ async function IssueView({ params }: { params: PageProps<"/issue/[id]">["params"
           <section className="flex flex-col gap-1 rounded-card panel p-5">
             <p className="kicker text-mist-300">Responsible body</p>
             <p className="font-display text-[22px] font-semibold">{issue.bodyName}</p>
+            {issue.bodyContact && <p className="text-xs text-fog-300">Complaints go to the {issue.bodyContact}</p>}
           </section>
         )}
+        {issue.ward && <WardCard ward={issue.ward} compact />}
       </div>
 
       <div className="flex min-w-0 flex-col gap-6">
@@ -120,12 +124,12 @@ async function IssueView({ params }: { params: PageProps<"/issue/[id]">["params"
         <EvidenceMedia reports={issue.reports} />
         <TimeMachinePanel lat={issue.lat} lng={issue.lng} segmentKey={issue.segmentKey} />
         {issue.status !== "verified" && <ScenarioPanel endpoint={`/api/issues/${issue.id}/scenario`} initial={issue.scenario} />}
-        {issue.caseFile && <CaseFilePanel caseFile={issue.caseFile} />}
+        {issue.caseFile && <CaseFilePanel caseFile={issue.caseFile} answers={issue.reports.flatMap((r) => r.followUp).slice(0, 10)} />}
 
         {issue.bodyName && (
           <section className="flex flex-col gap-3">
             <h2 className="font-display text-[22px] font-semibold">Complaint letter</h2>
-            <LetterCard issueId={issue.id} initialLetter={issue.letter} toEmail={issue.bodyEmail} />
+            <LetterCard issueId={issue.id} initialLetter={issue.letter} toEmail={issue.bodyEmail} cc={issue.bodyCc} toName={issue.bodyContact} />
           </section>
         )}
 
@@ -184,9 +188,7 @@ async function IssueView({ params }: { params: PageProps<"/issue/[id]">["params"
 export default function IssuePage({ params }: PageProps<"/issue/[id]">) {
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 md:px-6">
-      <Link href="/map" className={buttonClasses("ghost", "no-print self-start px-0")}>
-        <ArrowLeft size={16} strokeWidth={1.75} aria-hidden /> Live map
-      </Link>
+      <BackLink fallback="/map" label="Back" />
       <Suspense fallback={<div className="aspect-[16/9] skeleton rounded-photo" />}>
         <IssueView params={params} />
       </Suspense>

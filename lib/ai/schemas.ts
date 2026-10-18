@@ -165,9 +165,11 @@ export const caseFileJsonSchema = {
     safety_implications: { type: "string", maxLength: 300 },
     supporting_evidence: { type: "array", items: { type: "string", maxLength: 120 }, maxItems: 6 },
     recommended_inspection: { type: "string", maxLength: 300 },
+    research_summary: { type: "string", maxLength: 600 },
+    key_findings: { type: "array", items: { type: "string", maxLength: 160 }, maxItems: 6 },
     body: { type: "string", maxLength: 1600 },
   },
-  required: ["subject", "observed_condition", "safety_implications", "supporting_evidence", "recommended_inspection", "body"],
+  required: ["subject", "observed_condition", "safety_implications", "supporting_evidence", "recommended_inspection", "research_summary", "key_findings", "body"],
 } as const;
 
 export const caseFileSchema = z.object({
@@ -176,9 +178,77 @@ export const caseFileSchema = z.object({
   safety_implications: z.string().trim().min(1).max(300),
   supporting_evidence: z.array(z.string().trim().min(1).max(120)).max(6),
   recommended_inspection: z.string().trim().min(1).max(300),
+  // Older case files were compiled before follow-up research existed.
+  research_summary: z.string().trim().max(600).optional(),
+  key_findings: z.array(z.string().trim().min(1).max(160)).max(6).optional(),
   body: z.string().trim().min(1).max(1600),
 });
 export type CaseFile = z.infer<typeof caseFileSchema>;
+
+// Follow-up questions: after the model reads the evidence it asks what a photo cannot show.
+
+export const FOLLOW_UP_KINDS = ["choice", "text"] as const;
+
+export const followUpJsonSchema = {
+  type: "object",
+  properties: {
+    questions: {
+      type: "array",
+      minItems: 2,
+      maxItems: 4,
+      items: {
+        type: "object",
+        properties: {
+          id: { type: "string", maxLength: 24 },
+          question: { type: "string", maxLength: 120 },
+          kind: { enum: [...FOLLOW_UP_KINDS] },
+          options: { type: "array", items: { type: "string", maxLength: 40 }, maxItems: 5 },
+          why: { type: "string", maxLength: 100 },
+        },
+        required: ["id", "question", "kind", "options", "why"],
+      },
+    },
+  },
+  required: ["questions"],
+} as const;
+
+// Lenient on length: an over-long question is cut, not rejected, so a good reply is not thrown away.
+const cut = (n: number) => z.string().trim().min(1).transform((s) => s.slice(0, n));
+export const followUpQuestionSchema = z.object({
+  id: cut(24),
+  question: cut(160),
+  kind: z.enum(FOLLOW_UP_KINDS),
+  options: z.array(cut(48)).transform((o) => o.slice(0, 5)),
+  why: z.string().trim().transform((s) => s.slice(0, 160)),
+});
+export const followUpSchema = z.object({ questions: z.array(followUpQuestionSchema).min(1).transform((q) => q.slice(0, 4)) });
+export type FollowUpQuestion = z.infer<typeof followUpQuestionSchema>;
+
+/** One answered question, as sent with the report and kept with it. */
+export const followUpAnswerSchema = z.object({
+  question: z.string().trim().min(1).max(120),
+  answer: z.string().trim().min(1).max(300),
+});
+export type FollowUpAnswer = z.infer<typeof followUpAnswerSchema>;
+
+/** The question every report gets first: the model cannot see how long a problem has been there. */
+export const DURATION_QUESTION: FollowUpQuestion = {
+  id: "duration",
+  question: "How long has this been here?",
+  kind: "choice",
+  options: ["Just started", "A few days", "1 to 2 weeks", "About a month", "Several months", "Over a year"],
+  why: "Older problems get a higher priority.",
+};
+
+/** Days for an answer to the duration question, for priority and crowd truth. */
+export const DURATION_DAYS: Record<string, number> = {
+  "Just started": 1,
+  "A few days": 4,
+  "1 to 2 weeks": 10,
+  "About a month": 30,
+  "Several months": 120,
+  "Over a year": 400,
+};
 
 // Scenario (feature 14): "what happens if we don't fix this?" A model-generated scenario, not a prediction.
 

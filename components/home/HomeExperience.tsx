@@ -146,7 +146,6 @@ export function HomeExperience({ data }: { data: HomeData }) {
         <div className="pointer-events-none absolute inset-0 opacity-[0.05] [background-image:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22160%22 height=%22160%22%3E%3Cfilter id=%22n%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.9%22 numOctaves=%222%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23n)%22/%3E%3C/svg%3E')]" />
       </div>
 
-      <LandingNav />
 
       {/* Chapter rail */}
       <nav aria-label="Chapters" className="fixed top-1/2 right-6 z-30 hidden -translate-y-1/2 flex-col gap-3 lg:flex">
@@ -235,30 +234,6 @@ function Lede({ children }: { children: ReactNode }) {
     <Reveal delay={0.15}>
       <p className="mt-6 max-w-[46ch] text-lg leading-relaxed text-fog-200">{children}</p>
     </Reveal>
-  );
-}
-
-function LandingNav() {
-  return (
-    <header className="fixed inset-x-0 top-0 z-40">
-      <div className="mx-auto flex h-18 max-w-[1400px] items-center justify-between px-5 sm:px-8">
-        <Logo />
-        <nav className="flex items-center gap-1 sm:gap-2">
-          <Link href="/map" className="hidden h-10 items-center rounded-full px-4 text-sm font-bold text-fog-200 transition-opacity hover:opacity-80 sm:flex">
-            Live city
-          </Link>
-          <Link href="/incidents" className="hidden h-10 items-center rounded-full px-4 text-sm font-bold text-fog-200 transition-opacity hover:opacity-80 md:flex">
-            Incidents
-          </Link>
-          <Link href="/dashboard" className="hidden h-10 items-center rounded-full px-4 text-sm font-bold text-fog-200 transition-opacity hover:opacity-80 md:flex">
-            Dashboard
-          </Link>
-          <Link href="/report" className="flex h-10 items-center gap-2 rounded-full bg-signal px-5 text-sm font-extrabold text-ink-950 transition-transform hover:-translate-y-0.5">
-            Report <ArrowRight size={16} aria-hidden />
-          </Link>
-        </nav>
-      </div>
-    </header>
   );
 }
 

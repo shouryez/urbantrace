@@ -33,7 +33,7 @@ async function LiveCity() {
 
 export default function MapPage() {
   return (
-    <main className="fixed inset-0 z-50">
+    <main className="fixed inset-0 z-30">
       <Suspense fallback={<div className="h-full w-full bg-ink-950" />}>
         <LiveCity />
       </Suspense>

@@ -5,7 +5,7 @@
 // (recurrence, evidence, priority, assignment), incident clustering around the spot and alerts.
 import { after } from "next/server";
 import { embed, issueEmbeddingText } from "@/lib/ai/ollama";
-import type { Category } from "@/lib/ai/schemas";
+import { DURATION_DAYS, DURATION_QUESTION, type Category } from "@/lib/ai/schemas";
 import { reverseGeocode } from "@/lib/geocode";
 import { refreshAlerts, refreshIncidentsAround } from "@/lib/intel-server/incidents";
 import { refreshIssueIntel } from "@/lib/intel-server/issue";
@@ -53,7 +53,9 @@ export async function POST(request: Request) {
     }
   }
 
-  const durationDays = parseDurationClaim(body.case?.duration_claim) ?? parseDurationClaim(body.transcript);
+  // The reporter's own answer wins over what the model guessed from the evidence.
+  const durationAnswer = body.followUp.find((a) => a.question === DURATION_QUESTION.question)?.answer;
+  const durationDays = (durationAnswer ? DURATION_DAYS[durationAnswer] : undefined) ?? parseDurationClaim(body.case?.duration_claim) ?? parseDurationClaim(body.transcript);
   const consent = body.datasetConsent && mlEnabled(); // F14: only blurred photos, which the service guarantees
   const segment = segmentKey(body.road, body);
   const address = body.address ?? (await reverseGeocode(body.lat, body.lng));
@@ -91,7 +93,7 @@ export async function POST(request: Request) {
       .update({
         user_edited: body.userEdited,
         transcript: body.transcript,
-        extraction: body.case,
+        extraction: body.case || body.followUp.length ? { ...(body.case ?? {}), follow_up: body.followUp } : null,
         language: body.language,
         summary_local: primary ? body.summaryLocal : null,
         severity_opinion: body.userEdited ? problem.severity : null,
@@ -129,6 +131,8 @@ export async function POST(request: Request) {
   const main = linked[0]!;
   const origin = requestOrigin(request);
   const newIds = linked.filter((l) => !l.merged).map((l) => l.issueId);
+  // New answers about an existing issue are worth a fresh case file and letter too.
+  const letterIds = [...newIds, ...linked.filter((l) => l.merged && body.followUp.length).map((l) => l.issueId)];
 
   // Recurrence and priority now, so the success screen can say "this is back".
   await refreshIssueIntel(main.issueId);
@@ -156,7 +160,7 @@ export async function POST(request: Request) {
       }
     }
     // F6 and feature 17: the case file and letter, after the analysis so it can cite it.
-    for (const id of newIds) {
+    for (const id of letterIds) {
       try {
         await generateLetter(id, origin);
       } catch (err) {

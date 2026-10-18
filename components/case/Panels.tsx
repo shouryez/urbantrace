@@ -153,10 +153,39 @@ export function JourneyPanel({ steps }: { steps: JourneyStep[] }) {
   );
 }
 
-export function CaseFilePanel({ caseFile }: { caseFile: CaseFile }) {
+export function CaseFilePanel({ caseFile, answers = [] }: { caseFile: CaseFile; answers?: { question: string; answer: string }[] }) {
   return (
     <Section title="Case file" icon={<FileText size={18} aria-hidden />}>
       <p className="font-semibold">{caseFile.subject}</p>
+      {caseFile.research_summary && (
+        <div className="rounded-xl border border-violet/30 bg-violet/8 p-4">
+          <p className="kicker text-violet">AI research summary</p>
+          <p className="mt-2 text-sm leading-relaxed">{caseFile.research_summary}</p>
+          {caseFile.key_findings && caseFile.key_findings.length > 0 && (
+            <ul className="mt-3 flex flex-col gap-1.5 text-sm">
+              {caseFile.key_findings.map((f) => (
+                <li key={f} className="flex gap-2">
+                  <span aria-hidden className="mt-2 size-1.5 shrink-0 rounded-full bg-violet" />
+                  {f}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+      {answers.length > 0 && (
+        <div>
+          <p className="text-xs text-fog-500">What residents told us</p>
+          <dl className="mt-1.5 grid gap-1.5 text-sm sm:grid-cols-2">
+            {answers.map((a) => (
+              <div key={`${a.question}-${a.answer}`} className="rounded-lg bg-white/4 px-3 py-2">
+                <dt className="text-xs text-fog-300">{a.question}</dt>
+                <dd className="font-semibold">{a.answer}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      )}
       <dl className="flex flex-col gap-3 text-sm">
         <div>
           <dt className="text-xs text-fog-500">Observed condition</dt>
