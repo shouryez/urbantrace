@@ -1,25 +1,52 @@
 @import "tailwindcss";
 
+/* UrbanTrace design system: a night city with glowing civic signals.
+   Colour always means something: lime = action, ember = open, amber = in progress, mint = verified,
+   violet = incident, cyan = accessibility, siren = alert. Never decorative. */
 @theme {
-  --color-asphalt-950: #0E1013;
-  --color-asphalt-900: #15181C;
-  --color-asphalt-800: #1D2127;
-  --color-asphalt-700: #2B3038;
-  --color-slate-500: #5E6773;
-  --color-mist-300: #A9B0B9;
-  --color-chalk-50: #F1F3F2;
-  --color-marking-400: #F5B700;
-  --color-marking-100: #FFF1C2;
-  --color-alert-500: #E2512B;
-  --color-verified-500: #1E9E63;
-  --color-verified-100: #DDF3E7;
+  --color-ink-950: #05070c;
+  --color-ink-900: #0a0e16;
+  --color-ink-850: #0e131d;
+  --color-ink-800: #131a27;
+  --color-ink-700: #1d2636;
+  --color-ink-600: #2b3649;
+  --color-fog-50: #eef2f8;
+  --color-fog-200: #c9d1de;
+  --color-fog-300: #9aa5b8;
+  --color-fog-500: #616c82;
+
+  --color-signal: #d9ff4a;
+  --color-signal-100: #f4ffc2;
+  --color-ember: #ff6a3d;
+  --color-amber: #ffb547;
+  --color-mint: #35e0a1;
+  --color-mint-100: #d6fbea;
+  --color-violet: #a78bfa;
+  --color-cyan: #38d3f5;
+  --color-siren: #ff3d6e;
+  --color-ion: #6e8bff;
+
+  /* Earlier names, kept so every screen shares the palette. */
+  --color-asphalt-950: var(--color-ink-950);
+  --color-asphalt-900: var(--color-ink-900);
+  --color-asphalt-800: var(--color-ink-800);
+  --color-asphalt-700: var(--color-ink-700);
+  --color-slate-500: var(--color-fog-500);
+  --color-mist-300: var(--color-fog-300);
+  --color-chalk-50: var(--color-fog-50);
+  --color-marking-400: var(--color-signal);
+  --color-marking-100: var(--color-signal-100);
+  --color-alert-500: var(--color-ember);
+  --color-verified-500: var(--color-mint);
+  --color-verified-100: var(--color-mint-100);
 
   --font-display: var(--font-bricolage);
-  --font-sans: var(--font-inter);
+  --font-sans: var(--font-manrope);
+  --font-serif: var(--font-instrument);
   --font-mono: var(--font-jetbrains);
 
-  --radius-card: 20px;
-  --radius-photo: 14px;
+  --radius-card: 24px;
+  --radius-photo: 16px;
   --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
 
   --animate-scan: scan 1.2s ease-in-out infinite;
@@ -46,7 +73,7 @@
     line-height: 1.6;
   }
 
-  /* 2 px yellow focus ring with a 2 px offset on every control */
+  /* 2 px lime focus ring with a 2 px offset on every control */
   :focus-visible {
     outline: 2px solid var(--color-marking-400);
     outline-offset: 2px;
@@ -64,7 +91,29 @@
   }
 }
 
-/* Kicker labels: Inter 12 px, weight 700, uppercase, tracking 18% */
+/* Glass panels over the city */
+@utility glass {
+  background-color: rgb(10 14 22 / 0.62);
+  border: 1px solid rgb(255 255 255 / 0.08);
+  backdrop-filter: blur(18px) saturate(1.3);
+}
+/* A soft coloured glow behind a card; set --glow to a colour */
+@utility glow {
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.06), 0 18px 60px -20px var(--glow, rgb(110 139 255 / 0.45));
+}
+/* Gradient headline text */
+@utility text-aurora {
+  background: linear-gradient(100deg, #eef2f8 10%, #c9d1de 35%, #a78bfa 62%, #38d3f5 90%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+@utility num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Kicker labels: 12 px, weight 700, uppercase, tracking 18% */
 @utility kicker {
   font-family: var(--font-sans);
   font-size: 12px;
@@ -183,7 +232,7 @@
   background-color: var(--color-alert-500);
 }
 .map-pin--fix_claimed {
-  background-color: var(--color-marking-400);
+  background-color: var(--color-amber);
 }
 .map-pin--verified {
   background-color: var(--color-verified-500);
@@ -289,4 +338,55 @@
     transition-property: opacity !important;
     transition-duration: 150ms !important;
   }
+}
+
+/* MapLibre: dark, quiet controls on the 3D city */
+.maplibregl-ctrl-attrib {
+  background: rgb(10 14 22 / 0.6) !important;
+  color: var(--color-fog-300) !important;
+  font-size: 10px;
+}
+.maplibregl-ctrl-attrib a {
+  color: var(--color-fog-200) !important;
+}
+.maplibregl-ctrl-group {
+  background: rgb(19 26 39 / 0.85) !important;
+  border: 1px solid rgb(255 255 255 / 0.08);
+}
+.maplibregl-ctrl-group button span {
+  filter: invert(1);
+}
+
+/* Pulsing ring for alerts and live signals */
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+.pulse-ring {
+  animation: pulse-ring 1.8s ease-out infinite;
+}
+@keyframes caret {
+  50% {
+    opacity: 0;
+  }
+}
+.caret {
+  animation: caret 1s step-end infinite;
+}
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.marquee {
+  animation: marquee 40s linear infinite;
 }

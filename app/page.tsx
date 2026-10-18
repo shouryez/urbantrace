@@ -1,74 +1,54 @@
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { FortyToOne } from "@/components/landing/FortyToOne";
-import { Footer } from "@/components/landing/Footer";
-import { Hero, HeroCounters } from "@/components/landing/Hero";
-import { HowItWorks } from "@/components/landing/HowItWorks";
-import { Landing } from "@/components/landing/Landing";
-import { LiveMap } from "@/components/landing/LiveMap";
-import { OpenStack } from "@/components/landing/OpenStack";
-import { Problem } from "@/components/landing/Problem";
-import { ProofOfFix } from "@/components/landing/ProofOfFix";
-import { BackerCount } from "@/components/ui/BackerCount";
-import { CITY_BBOX, fetchIssues, getCityStats, getLatestFix } from "@/lib/issues-query";
+import { HomeExperience, type HomeData } from "@/components/home/HomeExperience";
+import { listIncidents } from "@/lib/incidents-query";
+import { CITY_BBOX, fetchIssues, getCityStats } from "@/lib/issues-query";
+import { recentRainMm } from "@/lib/weather";
 
-const COUNTER_LABELS = ["issues reported", "people backing them", "fixes verified"] as const;
+async function loadHome(): Promise<HomeData> {
+  await connection(); // live data: read at request time, not while prerendering
+  const [issues, incidents, stats, rainMm] = await Promise.all([
+    fetchIssues(CITY_BBOX, {}, 1500).catch(() => []),
+    listIncidents().catch(() => []),
+    getCityStats(),
+    recentRainMm(3).catch(() => 0),
+  ]);
+  const featured = incidents.filter((i) => i.kind === "cluster" && i.graph?.nodes?.length).sort((a, b) => b.reportCount - a.reportCount)[0];
+  return {
+    issues: issues.map((f) => ({
+      id: f.properties.id,
+      lng: f.geometry.coordinates[0],
+      lat: f.geometry.coordinates[1],
+      status: f.properties.status,
+      severity: f.properties.severity,
+      priority: f.properties.priority,
+      backerCount: f.properties.backerCount,
+      accessibility: f.properties.accessibility,
+      incidentId: f.properties.incidentId,
+      createdAt: f.properties.createdAt,
+    })),
+    incidents: incidents.map((i) => ({ id: i.id, lng: i.lng, lat: i.lat, radiusM: i.radiusM, kind: i.kind, reportCount: i.reportCount, title: i.title })),
+    stats: {
+      issues: stats?.issues ?? 0,
+      backers: stats?.backers ?? 0,
+      verified: stats?.verified ?? 0,
+      incidents: incidents.filter((i) => i.kind === "cluster").length,
+    },
+    rainMm,
+    featured: featured?.graph
+      ? { title: featured.title, reportCount: featured.reportCount, radiusM: featured.radiusM, confidence: featured.confidence, graph: { nodes: featured.graph.nodes, edges: featured.graph.edges } }
+      : null,
+  };
+}
 
-function Counters({ values }: { values: (number | null)[] }) {
+async function Home() {
+  return <HomeExperience data={await loadHome()} />;
+}
+
+export default function Page() {
   return (
-    <HeroCounters
-      items={COUNTER_LABELS.map((label, i) => ({
-        label,
-        value: values[i] == null ? <span className="text-mist-300">–</span> : <BackerCount value={values[i]} fromZero />,
-      }))}
-    />
-  );
-}
-
-async function LiveCounters() {
-  await connection(); // live data: read at request time, not while prerendering
-  const stats = await getCityStats();
-  return <Counters values={stats ? [stats.issues, stats.backers, stats.verified] : [null, null, null]} />;
-}
-
-async function LatestFix() {
-  await connection(); // live data: read at request time, not while prerendering
-  return <ProofOfFix fix={await getLatestFix()} />;
-}
-
-async function LiveIssues() {
-  await connection(); // live data: read at request time, not while prerendering
-  const issues = await fetchIssues(CITY_BBOX, {}, 40).catch((err: unknown) => {
-    console.error(err);
-    return [];
-  });
-  return <LiveMap issues={issues} />;
-}
-
-export default function Home() {
-  return (
-    <Landing>
-      {/* section 2 slides over the sticky hero */}
-      <div className="relative">
-        <Hero
-          counters={
-            <Suspense fallback={<Counters values={[null, null, null]} />}>
-              <LiveCounters />
-            </Suspense>
-          }
-        />
-        <Problem />
-      </div>
-      <HowItWorks />
-      <FortyToOne />
-      <Suspense fallback={<ProofOfFix fix={null} />}>
-        <LatestFix />
-      </Suspense>
-      <OpenStack />
-      <Suspense fallback={<div className="mx-auto h-svh w-full max-w-6xl px-4 py-24 md:px-16"><div className="skeleton h-[360px] rounded-card" /></div>}>
-        <LiveIssues />
-      </Suspense>
-      <Footer />
-    </Landing>
+    <Suspense fallback={<div className="min-h-svh bg-ink-950" />}>
+      <Home />
+    </Suspense>
   );
 }

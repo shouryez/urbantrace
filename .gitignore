@@ -47,3 +47,6 @@ __pycache__/
 
 # open dataset export (F14)
 /dataset/
+
+# copied from node_modules by scripts/copy-maplibre.mjs
+/public/maplibre/

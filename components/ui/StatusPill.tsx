@@ -4,7 +4,7 @@ import type { Status } from "@/lib/ai/schemas";
 // Every status carries a word and an icon, never colour alone.
 const STATUS_STYLE: Record<Status, { label: string; Icon: LucideIcon; className: string }> = {
   open: { label: "Open", Icon: CircleAlert, className: "bg-alert-500" },
-  fix_claimed: { label: "Fix claimed", Icon: Hourglass, className: "bg-marking-400" },
+  fix_claimed: { label: "Fix claimed", Icon: Hourglass, className: "bg-amber" },
   verified: { label: "Verified", Icon: BadgeCheck, className: "bg-verified-500" },
 };
 
