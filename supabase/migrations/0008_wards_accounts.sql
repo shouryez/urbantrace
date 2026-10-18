@@ -55,8 +55,11 @@ alter table corporation_offices enable row level security;
 alter table officers enable row level security;
 alter table mlas enable row level security;
 -- Public facts, readable by anyone; written only by the service role.
+drop policy if exists "corporation offices are public" on corporation_offices;
 create policy "corporation offices are public" on corporation_offices for select using (true);
+drop policy if exists "officers are public" on officers;
 create policy "officers are public" on officers for select using (true);
+drop policy if exists "mlas are public" on mlas;
 create policy "mlas are public" on mlas for select using (true);
 
 -- After loading wards: each corporation's boundary is the union of its wards.
@@ -102,6 +105,7 @@ create table if not exists profiles (
   created_at timestamptz not null default now()
 );
 alter table profiles enable row level security;
+drop policy if exists "a user reads their own profile" on profiles;
 create policy "a user reads their own profile" on profiles for select using (auth.uid() = id);
 
 alter table reports add column if not exists user_id uuid references auth.users(id) on delete set null;

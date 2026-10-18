@@ -10,40 +10,11 @@
 
 import { readFile } from "node:fs/promises";
 import { AS_OF, MLA_SOURCE, MLAS, OFFICERS, OFFICES, WARDS_KML_URL, WARDS_SOURCE } from "@/lib/civic-directory";
+import { parseKml } from "@/lib/kml";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 process.loadEnvFile(".env.local");
 const db = supabaseAdmin();
-
-type Ward = { fields: Record<string, string>; polygons: number[][][][] };
-
-const decode = (s: string) => s.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'").trim();
-
-function ring(text: string): number[][] {
-  return text
-    .trim()
-    .split(/\s+/)
-    .map((t) => t.split(",").slice(0, 2).map(Number))
-    .filter((p) => p.length === 2 && p.every(Number.isFinite));
-}
-
-/** A small KML reader for this file: SimpleData fields and Polygon rings per Placemark. */
-function parseKml(kml: string): Ward[] {
-  const wards: Ward[] = [];
-  for (const [, body] of kml.matchAll(/<Placemark>([\s\S]*?)<\/Placemark>/g)) {
-    const fields: Record<string, string> = {};
-    for (const [, name, value] of body!.matchAll(/<SimpleData name="([^"]+)">([\s\S]*?)<\/SimpleData>/g)) fields[name!.trim()] = decode(value!);
-    const polygons: number[][][][] = [];
-    for (const [, poly] of body!.matchAll(/<Polygon>([\s\S]*?)<\/Polygon>/g)) {
-      const outer = /<outerBoundaryIs>[\s\S]*?<coordinates>([\s\S]*?)<\/coordinates>/.exec(poly!)?.[1];
-      if (!outer) continue;
-      const inner = [...poly!.matchAll(/<innerBoundaryIs>[\s\S]*?<coordinates>([\s\S]*?)<\/coordinates>/g)].map((m) => ring(m[1]!));
-      polygons.push([ring(outer), ...inner]);
-    }
-    if (polygons.length) wards.push({ fields, polygons });
-  }
-  return wards;
-}
 
 const int = (v: string | undefined) => (v && Number.isFinite(Number(v)) ? Math.round(Number(v)) : null);
 
@@ -54,8 +25,10 @@ async function main() {
   if (wards.length < 300) throw new Error(`Expected about 369 wards, found ${wards.length}`);
   console.log(`Parsed ${wards.length} wards from ${path ?? WARDS_SOURCE}`);
 
-  const { error: clearError } = await db.rpc("clear_wards");
-  if (clearError) throw new Error(`clear_wards failed: ${clearError.message}`);
+  // clear_wards() deletes without a WHERE clause, which Supabase's safe update guard refuses.
+  await db.from("issues").update({ ward_id: null }).not("ward_id", "is", null);
+  const { error: clearError } = await db.from("wards").delete().gte("id", 0);
+  if (clearError) throw new Error(`Clearing wards failed: ${clearError.message}`);
   let loaded = 0;
   for (const w of wards) {
     const f = w.fields;

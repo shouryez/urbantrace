@@ -8,6 +8,7 @@
 //   npm run seed:demo                 seed (drafts letters with the model; takes a few minutes)
 //   npm run seed:demo -- --no-letters seed without letters
 //   npm run seed:demo -- --clear      remove every seeded issue and its photos
+//   npm run seed:demo -- --wards      add cases across about 60 wards (after npm run seed:wards)
 //
 // Uses bench/labels.csv (civic photos) and bench/pairs.csv (fixed pairs become verified issues).
 // A photo's `credit` column (author, licence, source) is stored with it and shown on the issue page.
@@ -24,6 +25,8 @@ import { reversePlace } from "@/lib/geocode";
 import { segmentKey } from "@/lib/intel/geo";
 import { refreshCity } from "@/lib/intel-server/refresh";
 import { cleanForStorage, toModelImage } from "@/lib/images";
+import { parseKml, wardPoint } from "@/lib/kml";
+import { WARDS_KML_URL } from "@/lib/civic-directory";
 import { logEvent } from "@/lib/issue-detail";
 import { generateLetter } from "@/lib/letter";
 import { blurPhoto } from "@/lib/ml";
@@ -143,6 +146,10 @@ async function clear(): Promise<void> {
 async function main() {
   const args = process.argv.slice(2);
   if (args.includes("--clear")) return clear();
+  if (args.includes("--wards")) {
+    const next = args[args.indexOf("--wards") + 1];
+    return seedWardCases(next && !next.startsWith("--") ? next : undefined);
+  }
   const letters = !args.includes("--no-letters");
 
   const allLabels = parseCsv(await readFile(join("bench", "labels.csv"), "utf8"));
@@ -381,6 +388,68 @@ async function seedScenarios(photosFor: (c: Category) => string[], now: number):
   n += 3;
   console.log("HSR Layout recurring pothole: 3 issues");
   return n;
+}
+
+// Ward cases (`--wards [file.kml]`): one to three seeded problems in about 60 wards spread over the
+// five corporations, mostly open, some with a fix claimed and some verified, so the ward directory and
+// ward pages have a civic record. Needs the wards loaded (npm run seed:wards).
+const WARD_CASES: Record<string, string[]> = {
+  pothole: ["Deep pothole in the middle of the lane, two wheelers swerving around it", "Cluster of potholes after the last rain, edges breaking up", "Pothole near the bus stop filling with water"],
+  garbage: ["Garbage dumped on the roadside for days, not cleared", "Overflowing garbage at the corner, attracting stray dogs", "Black spot of mixed waste next to the footpath"],
+  streetlight: ["Streetlight not working for the whole stretch, road dark at night", "Two streetlights out near the park entrance", "Flickering streetlight at the junction"],
+  waterlogging: ["Water stagnates across the road after every rain", "Low lying stretch floods and blocks the footpath", "Rainwater pooling outside the school gate"],
+  footpath: ["Broken footpath slabs, unsafe for elderly and wheelchair users", "Footpath dug up and left open", "Footpath blocked by debris, people walk on the road"],
+  drainage: ["Storm drain choked with silt and plastic", "Open drain without a cover next to the footpath", "Drain overflowing onto the road"],
+  water_leak_sewage: ["Drinking water pipe leaking on the road for a week", "Sewage overflowing from a manhole", "Water leak undermining the road edge"],
+  power_hazard: ["Low hanging power cables over the footpath", "Open electrical junction box at the corner", "Leaning electric pole after the storm"],
+};
+const CYCLE: Category[] = ["pothole", "garbage", "streetlight", "waterlogging", "footpath", "drainage", "water_leak_sewage", "power_hazard"];
+const PHOTO_OF: Partial<Record<Category, Category>> = { footpath: "pothole", drainage: "water_leak_sewage" };
+
+async function seedWardCases(kmlPath: string | undefined): Promise<void> {
+  const labels = parseCsv(await readFile(join("bench", "labels.csv"), "utf8")).filter(
+    (r) => ["true", "1", "yes", "y"].includes((r.is_civic_issue ?? "").toLowerCase()) && CATEGORIES.includes(r.category as Category),
+  );
+  const photosFor = (c: Category) => {
+    const list = labels.filter((l) => l.category === (PHOTO_OF[c] ?? c)).map((l) => l.file!);
+    return list.length ? list : labels.filter((l) => l.category === "pothole").map((l) => l.file!);
+  };
+  const kml = kmlPath ? await readFile(kmlPath, "utf8") : await (await fetch(WARDS_KML_URL, { signal: AbortSignal.timeout(120_000) })).text();
+  const wards = parseKml(kml);
+  const now = Date.now();
+  const picked = wards.filter((_, i) => i % 6 === 0);
+  let n = 0;
+  for (const [i, w] of picked.entries()) {
+    const corp = (w.fields.Corporation ?? "south").toLowerCase() as CorporationId;
+    const centre = wardPoint(w);
+    const count = 1 + (i % 3);
+    for (let k = 0; k < count; k++) {
+      const category = CYCLE[(i + k * 3) % CYCLE.length]!;
+      const lines = WARD_CASES[category]!;
+      const createdAt = new Date(now - (3 + rand() * 87) * DAY);
+      const verified = k === 0 && i % 5 === 0;
+      const claimed = !verified && i % 7 === 3;
+      const photos = photosFor(category);
+      const id = await seedIssue({
+        category, severity: 2 + Math.floor(rand() * 3), summary: lines[(i + k) % lines.length]!,
+        lat: centre.lat + (rand() - 0.5) * 0.002, lng: centre.lng + (rand() - 0.5) * 0.002, createdAt, photo: photos[(i + k) % photos.length]!, corp,
+        accessibility: category === "footpath" || category === "waterlogging" ? (i % 2 ? "major" : "partial") : "none",
+        backers: 1 + Math.floor(rand() ** 2 * 12),
+        ...(verified ? { verifiedAt: new Date(Math.min(now - DAY, createdAt.getTime() + (4 + rand() * 20) * DAY)) } : {}),
+      });
+      if (claimed) {
+        await logEvent(id, "fix_claimed");
+        await db.from("issues").update({ status: "fix_claimed" }).eq("id", id);
+      }
+      n++;
+    }
+    console.log(`${w.fields.Ward_Name} (${corp}): ${count} case${count > 1 ? "s" : ""}`);
+  }
+  const { data: placed } = await db.rpc("backfill_issue_areas");
+  console.log(`\nSeeded ${n} ward cases in ${picked.length} wards; ${placed} issues placed in their ward.`);
+  console.log("Recomputing priorities, incidents and alerts…");
+  const intel = await refreshCity();
+  console.log(`  ${intel.issues} issues, ${intel.incidents} incidents, ${intel.alerts} new alerts`);
 }
 
 await main();

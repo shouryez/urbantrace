@@ -4,6 +4,7 @@
 // routed. After the reply: the case file and letter, embeddings, the issue's intelligence
 // (recurrence, evidence, priority, assignment), incident clustering around the spot and alerts.
 import { after } from "next/server";
+import { currentAccount } from "@/lib/account";
 import { embed, issueEmbeddingText } from "@/lib/ai/ollama";
 import { DURATION_DAYS, DURATION_QUESTION, type Category } from "@/lib/ai/schemas";
 import { reverseGeocode } from "@/lib/geocode";
@@ -56,6 +57,7 @@ export async function POST(request: Request) {
   // The reporter's own answer wins over what the model guessed from the evidence.
   const durationAnswer = body.followUp.find((a) => a.question === DURATION_QUESTION.question)?.answer;
   const durationDays = (durationAnswer ? DURATION_DAYS[durationAnswer] : undefined) ?? parseDurationClaim(body.case?.duration_claim) ?? parseDurationClaim(body.transcript);
+  const account = await currentAccount().catch(() => null);
   const consent = body.datasetConsent && mlEnabled(); // F14: only blurred photos, which the service guarantees
   const segment = segmentKey(body.road, body);
   const address = body.address ?? (await reverseGeocode(body.lat, body.lng));
@@ -99,6 +101,7 @@ export async function POST(request: Request) {
         severity_opinion: body.userEdited ? problem.severity : null,
         gps_accuracy_m: body.gpsAccuracyM,
         duration_claim_days: durationDays,
+        ...(account ? { user_id: account.id } : {}),
         media: { kind: body.media, frames: body.framePaths, frame_times: body.frameTimes, lat: body.lat, lng: body.lng },
         ...(consent ? { dataset_consent: true } : {}),
       })
