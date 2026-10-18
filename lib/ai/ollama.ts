@@ -43,6 +43,47 @@ async function chatOnce(system: string, user: string, images: string[], jsonSche
   return data.message.content;
 }
 
+type GoogleResponse = { candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] } }[] };
+
+/** Hosted Gemma through Google AI Studio (GOOGLE_API_KEY, GOOGLE_MODEL), with structured JSON output. */
+async function googleChatOnce(system: string, user: string, images: string[], jsonSchema: object, model: string): Promise<string> {
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-goog-api-key": process.env.GOOGLE_API_KEY! },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: system }] },
+      contents: [{ role: "user", parts: [...images.map((data) => ({ inlineData: { mimeType: "image/jpeg", data } })), { text: user }] }],
+      generationConfig: { temperature: 0, responseMimeType: "application/json", responseJsonSchema: jsonSchema },
+    }),
+    signal: AbortSignal.timeout(90_000),
+  });
+  if (!res.ok) throw new Error(`Google AI returned ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  const data = (await res.json()) as GoogleResponse;
+  const text = (data.candidates?.[0]?.content?.parts ?? []).filter((p) => !p.thought && typeof p.text === "string").map((p) => p.text).join("");
+  if (!text) throw new Error("Google AI reply has no text");
+  return text.replace(/^\s*```(?:json)?\s*|\s*```\s*$/g, "");
+}
+
+/**
+ * The app's model: hosted Gemma (GOOGLE_MODEL) when GOOGLE_API_KEY is set, else local Ollama (VISION_MODEL).
+ * A failed hosted call (network, quota) falls back to Ollama, so the demo keeps working offline.
+ */
+async function appChatOnce(system: string, user: string, images: string[], jsonSchema: object): Promise<string> {
+  if (process.env.GOOGLE_API_KEY) {
+    try {
+      return await googleChatOnce(system, user, images, jsonSchema, process.env.GOOGLE_MODEL ?? "gemma-4-26b-a4b-it");
+    } catch (err) {
+      console.warn("Hosted Gemma failed, falling back to Ollama:", err instanceof Error ? err.message : err);
+    }
+  }
+  return chatOnce(system, user, images, jsonSchema, requireEnv("VISION_MODEL"));
+}
+
+/** Which model answers, for logs and the UI. */
+export function activeModel(): string {
+  return process.env.GOOGLE_API_KEY ? (process.env.GOOGLE_MODEL ?? "gemma-4-26b-a4b-it") : (process.env.VISION_MODEL ?? "unset");
+}
+
 /**
  * Sends a system prompt, a user prompt and images (none for text-only jobs) to the model and returns the reply
  * validated against `schema`. An invalid reply is retried once, then throws ModelReplyError so
@@ -54,12 +95,12 @@ export async function askVision<T>(
   images: string[],
   jsonSchema: object,
   schema: z.ZodType<T>,
-  /** The benchmark compares models; the app always uses VISION_MODEL. */
-  model: string = requireEnv("VISION_MODEL"),
+  /** The benchmark names an Ollama model to compare; the app leaves it out and uses appChatOnce. */
+  model?: string,
 ): Promise<T> {
   let lastReply: unknown;
   for (let attempt = 0; attempt < 2; attempt++) {
-    const content = await chatOnce(system, user, images, jsonSchema, model);
+    const content = model ? await chatOnce(system, user, images, jsonSchema, model) : await appChatOnce(system, user, images, jsonSchema);
     try {
       lastReply = JSON.parse(content);
     } catch {

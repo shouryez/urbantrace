@@ -1,6 +1,6 @@
 // Dev only: Phase 0 gate check. GET shows a bare upload form for a phone, POST runs Job 1 on one
 // photo and returns the validated JSON. Disabled in production builds.
-import { askVision, ModelReplyError } from "@/lib/ai/ollama";
+import { activeModel, askVision, ModelReplyError } from "@/lib/ai/ollama";
 import { PHOTO_READING_SYSTEM, PHOTO_READING_USER } from "@/lib/ai/prompts";
 import { photoReadingJsonSchema, photoReadingSchema } from "@/lib/ai/schemas";
 import { toModelImage } from "@/lib/images";
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
     );
     return Response.json({
       ok: true,
-      model: process.env.VISION_MODEL,
+      model: activeModel(),
       seconds: Math.round((performance.now() - started) / 100) / 10,
       reading,
     });
