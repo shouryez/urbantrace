@@ -1,0 +1,292 @@
+@import "tailwindcss";
+
+@theme {
+  --color-asphalt-950: #0E1013;
+  --color-asphalt-900: #15181C;
+  --color-asphalt-800: #1D2127;
+  --color-asphalt-700: #2B3038;
+  --color-slate-500: #5E6773;
+  --color-mist-300: #A9B0B9;
+  --color-chalk-50: #F1F3F2;
+  --color-marking-400: #F5B700;
+  --color-marking-100: #FFF1C2;
+  --color-alert-500: #E2512B;
+  --color-verified-500: #1E9E63;
+  --color-verified-100: #DDF3E7;
+
+  --font-display: var(--font-bricolage);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-jetbrains);
+
+  --radius-card: 20px;
+  --radius-photo: 14px;
+  --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --animate-scan: scan 1.2s ease-in-out infinite;
+  @keyframes scan {
+    from {
+      transform: translateY(0);
+    }
+    to {
+      transform: translateY(100%);
+    }
+  }
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: var(--color-asphalt-950);
+    color: var(--color-chalk-50);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  /* 2 px yellow focus ring with a 2 px offset on every control */
+  :focus-visible {
+    outline: 2px solid var(--color-marking-400);
+    outline-offset: 2px;
+  }
+
+  /* 3% film grain so large dark areas do not look flat */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    pointer-events: none;
+    opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+}
+
+/* Kicker labels: Inter 12 px, weight 700, uppercase, tracking 18% */
+@utility kicker {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+/* Loading skeleton: a slow shimmer, not a spinner */
+@utility skeleton {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--color-asphalt-800);
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.05), transparent);
+    animation: shimmer 1.8s ease-in-out infinite;
+  }
+}
+@keyframes shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* Pin drop with a little overshoot, for new map pins and the success screen */
+@keyframes pin-drop {
+  from {
+    transform: translateY(-32px);
+    opacity: 0;
+  }
+  60% {
+    opacity: 1;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+/* A yellow ring that bursts once */
+@keyframes ring-burst {
+  from {
+    transform: scale(0.6);
+    opacity: 1;
+  }
+  to {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+/* Marching ants on a dashed SVG outline */
+.march {
+  animation: march 1.6s linear infinite;
+}
+@keyframes march {
+  to {
+    stroke-dashoffset: -16;
+  }
+}
+/* Slow drift of the hero street map */
+@keyframes drift {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-96px, -48px, 0);
+  }
+}
+
+/* Leaflet: dark look from a CSS filter on the OpenStreetMap tiles (no extra tile provider) */
+.leaflet-container {
+  background-color: var(--color-asphalt-900);
+  font-family: var(--font-sans);
+}
+.map-tiles-dark {
+  filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9) saturate(0.5);
+}
+.leaflet-container .leaflet-control-attribution {
+  background-color: rgb(21 24 28 / 0.72);
+  color: var(--color-mist-300);
+}
+.leaflet-container .leaflet-control-attribution a {
+  color: var(--color-marking-400);
+}
+.leaflet-container .leaflet-bar a {
+  background-color: var(--color-asphalt-800);
+  color: var(--color-chalk-50);
+  border-color: rgb(255 255 255 / 0.06);
+}
+@media (width < 48rem) {
+  .leaflet-container .leaflet-control-zoom {
+    display: none; /* pinch to zoom on phones; the bottom sheet needs the space */
+  }
+}
+
+/* MapPin: status coloured circle with the backer count */
+.map-pin {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 3px solid var(--color-asphalt-950);
+  color: var(--color-asphalt-950);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  transition: transform 150ms ease-out;
+}
+.map-pin--open {
+  background-color: var(--color-alert-500);
+}
+.map-pin--fix_claimed {
+  background-color: var(--color-marking-400);
+}
+.map-pin--verified {
+  background-color: var(--color-verified-500);
+}
+.map-pin.is-active {
+  transform: scale(1.25);
+  outline: 2px solid var(--color-chalk-50);
+}
+/* Landing live map: pins drop in one by one (delay set inline) */
+.pin-drop-in {
+  display: block;
+  animation: pin-drop 500ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+/* Done step: a ring that bursts once after the pin lands */
+.ring-burst {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  border: 2px solid var(--color-marking-400);
+  opacity: 0;
+  animation: ring-burst 900ms var(--ease-out-expo) 450ms 1 both;
+}
+/* New pins from Realtime drop in and pulse once */
+.map-pin.is-fresh {
+  animation: pin-drop 500ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.map-pin.is-fresh::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 999px;
+  border: 2px solid var(--color-marking-400);
+  animation: pin-pulse 900ms var(--ease-out-expo) 1 forwards;
+}
+@keyframes pin-pulse {
+  from {
+    transform: scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+.map-cluster {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background-color: var(--color-asphalt-800);
+  border: 2px solid var(--color-asphalt-700);
+  color: var(--color-chalk-50);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.locate-pin {
+  display: block;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background-color: var(--color-marking-400);
+  border: 4px solid var(--color-asphalt-950);
+  outline: 2px solid var(--color-marking-400);
+}
+
+/* Print or save as PDF (F6): only the complaint letter, on white paper */
+@media print {
+  body {
+    background: #fff;
+  }
+  body::before,
+  .no-print {
+    display: none;
+  }
+  body * {
+    visibility: hidden;
+  }
+  .print-letter,
+  .print-letter * {
+    visibility: visible;
+  }
+  .print-letter {
+    position: absolute;
+    inset: 0 0 auto 0;
+    padding: 0;
+    color: #000;
+    background: #fff;
+  }
+}
+
+/* Reduced motion: only short opacity fades remain */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-property: opacity !important;
+    transition-duration: 150ms !important;
+  }
+}
