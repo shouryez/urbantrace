@@ -1,7 +1,25 @@
 "use client";
 
 import { motion } from "motion/react";
-import { BadgeCheck, Camera, CircleX, Hourglass, Send, Users, type LucideIcon } from "lucide-react";
+import {
+  BadgeCheck,
+  Camera,
+  CircleX,
+  ClipboardCheck,
+  Hammer,
+  HardHat,
+  History,
+  Hourglass,
+  MapPinned,
+  Network,
+  ScanLine,
+  Send,
+  ShieldAlert,
+  ThumbsUp,
+  UserCheck,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import { useReducedMotionSafe } from "@/components/motion/useReducedMotionSafe";
 import type { IssueEvent } from "@/lib/issue-detail";
 
@@ -12,6 +30,16 @@ const KIND: Record<IssueEvent["kind"], { label: string; Icon: LucideIcon; node: 
   fix_claimed: { label: "Fix claimed", Icon: Hourglass, node: "bg-marking-400 text-asphalt-950" },
   verified: { label: "Verified", Icon: BadgeCheck, node: "bg-verified-500 text-asphalt-950" },
   verification_failed: { label: "Not verified", Icon: CircleX, node: "bg-alert-500 text-asphalt-950" },
+  triaged: { label: "AI triage", Icon: ScanLine, node: "bg-marking-400 text-asphalt-950" },
+  assigned: { label: "Assigned to zone officer", Icon: UserCheck, node: "bg-marking-400 text-asphalt-950" },
+  field_team: { label: "Field team scheduled", Icon: HardHat, node: "bg-marking-400 text-asphalt-950" },
+  site_visit: { label: "Site visit", Icon: MapPinned, node: "bg-marking-400 text-asphalt-950" },
+  repair: { label: "Repair in progress", Icon: Hammer, node: "bg-marking-400 text-asphalt-950" },
+  partially_resolved: { label: "Partially resolved", Icon: ClipboardCheck, node: "bg-marking-400 text-asphalt-950" },
+  citizen_verified: { label: "Residents confirmed the fix", Icon: ThumbsUp, node: "bg-verified-500 text-asphalt-950" },
+  citizen_disputed: { label: "Residents say it is not fixed", Icon: ShieldAlert, node: "bg-alert-500 text-asphalt-950" },
+  recurrence_detected: { label: "Recurring issue", Icon: History, node: "bg-alert-500 text-asphalt-950" },
+  incident_linked: { label: "Linked to an incident", Icon: Network, node: "bg-marking-400 text-asphalt-950" },
 };
 
 function when(iso: string): string {

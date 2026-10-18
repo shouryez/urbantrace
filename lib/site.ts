@@ -3,5 +3,5 @@ export const REPO_URL: string | null = "https://github.com/shouryez/urbantrace";
 
 export const TEAM = {
   name: "Code Not Found",
-  members: ["Shourya Pratap Singh Chouhan", "Daksh Bhatt", "Shreya Singh Chouhan", "Devansh Jain"],
+  members: ["Shourya Pratap Singh Chouhan", "Daksh Bhatt", "Shreya Singh Chouhan"],
 };
