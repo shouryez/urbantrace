@@ -75,6 +75,14 @@ describe("incident detection", () => {
   test("unrelated problems side by side stay separate", () => {
     assert.equal(detectIncidents([issue(1, 0, "garbage", 3, 2), issue(2, 20, "streetlight", 3, 2)]).length, 0);
   });
+  test("two heavily backed problems are not yet an incident", () => {
+    assert.equal(detectIncidents([issue(1, 0, "waterlogging", 12, 10), issue(2, 80, "pothole", 3, 9)]).length, 0);
+  });
+  test("root cause probabilities sum to one", () => {
+    const r = inferRootCause({ waterlogging: 5, pothole: 2 });
+    assert.ok(Math.abs(r.ranked.reduce((s, x) => s + x.score, 0) - 1) < 1e-9);
+    assert.ok(r.explains.find((e) => e.category === "pothole")!.via.includes("waterlogging"));
+  });
   test("verified issues are left out", () => {
     const a = issue(1, 0, "waterlogging", 5, 2);
     const b = { ...issue(2, 50, "waterlogging", 5, 2), status: "verified" as const };

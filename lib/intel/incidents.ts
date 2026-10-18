@@ -18,6 +18,8 @@ export type ClusterInput = Point & {
   severity: number;
   backerCount: number;
   createdAt: string;
+  /** The locality from the address ("HSR Layout"), for a readable title. */
+  place?: string | null;
 };
 
 export type DetectedIncident = {
@@ -58,8 +60,14 @@ function timeEps(a: Category, b: Category): number {
 }
 const MIN_RELATEDNESS = 0.3;
 
-export function detectIncidents(items: ClusterInput[], opts: { recentRainMm?: number; minReports?: number } = {}): DetectedIncident[] {
+/**
+ * Quality gates: an incident needs at least `minIssues` distinct problems (one problem with many backers is
+ * already a single case), `minReports` reports, and one cause that is at least 45% likely and explains at
+ * least 60% of the reports. Otherwise the problems are a coincidence of place, not one incident.
+ */
+export function detectIncidents(items: ClusterInput[], opts: { recentRainMm?: number; minReports?: number; minIssues?: number } = {}): DetectedIncident[] {
   const minReports = opts.minReports ?? 4;
+  const minIssues = opts.minIssues ?? 3;
   const open = items.filter((i) => i.status !== "verified");
   const time = (i: ClusterInput) => new Date(i.createdAt).getTime();
 
@@ -100,7 +108,7 @@ export function detectIncidents(items: ClusterInput[], opts: { recentRainMm?: nu
   for (let c = 0; c < cluster; c++) {
     const members = open.filter((_, i) => label[i] === c);
     const reportCount = members.reduce((s, m) => s + m.backerCount, 0);
-    if (members.length < 2 || reportCount < minReports) continue;
+    if (members.length < minIssues || reportCount < minReports) continue;
 
     const categories: Partial<Record<Category, number>> = {};
     for (const m of members) categories[m.category] = (categories[m.category] ?? 0) + m.backerCount;
@@ -109,6 +117,7 @@ export function detectIncidents(items: ClusterInput[], opts: { recentRainMm?: nu
     const times = members.map(time).sort((a, b) => a - b);
     const spanH = (times.at(-1)! - times[0]!) / 3_600_000;
     const root = inferRootCause(categories, { recentRainMm: opts.recentRainMm });
+    if (root.confidence < 0.45 || root.coverage < 0.6) continue;
 
     const areaKm2 = Math.PI * (radiusM / 1000) ** 2;
     const perKm2 = reportCount / Math.max(0.01, areaKm2);
@@ -135,7 +144,7 @@ export function detectIncidents(items: ClusterInput[], opts: { recentRainMm?: nu
     const first = members.reduce((a, b) => (a.id < b.id ? a : b));
     out.push({
       signature: `cluster:${first.id}`,
-      title: `${CAUSE_TITLES[root.cause] ?? NODE_LABELS[root.cause]}`,
+      title: `${CAUSE_TITLES[root.cause] ?? NODE_LABELS[root.cause]}${commonPlace(members) ? ` in ${commonPlace(members)}` : ""}`,
       issueIds: members.map((m) => m.id),
       center,
       radiusM,
@@ -151,6 +160,14 @@ export function detectIncidents(items: ClusterInput[], opts: { recentRainMm?: nu
     });
   }
   return out.sort((a, b) => b.reportCount - a.reportCount);
+}
+
+/** The locality most members share, if any. */
+function commonPlace(members: ClusterInput[]): string | null {
+  const counts = new Map<string, number>();
+  for (const m of members) if (m.place) counts.set(m.place, (counts.get(m.place) ?? 0) + 1);
+  const [best] = [...counts].sort((a, b) => b[1] - a[1]);
+  return best && best[1] >= Math.ceil(members.length / 2) ? best[0] : null;
 }
 
 // ---------------------------------------------------------------------------------------------

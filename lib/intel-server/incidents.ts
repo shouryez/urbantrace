@@ -12,6 +12,12 @@ import { refreshIssueIntel } from "./issue";
 
 const KM_LAT = 1 / 111;
 
+/** "251A, 19th Main Road, Sector 4, HSR Layout" → "HSR Layout". */
+function locality(address: string | null): string | null {
+  const parts = (address ?? "").split(",").map((p) => p.trim()).filter((p) => p && !/^d+$/.test(p) && !/bengaluru|bangalore|karnataka|india/i.test(p));
+  return parts.at(-1) ?? null;
+}
+
 function bboxAround(lat: number, lng: number, km: number): [number, number, number, number] {
   const dLng = km / (111 * Math.cos((lat * Math.PI) / 180));
   return [lng - dLng, lat - km * KM_LAT, lng + dLng, lat + km * KM_LAT];
@@ -59,6 +65,7 @@ export async function refreshIncidentsAround(lat: number, lng: number, km = 3): 
       severity: f.properties.severity,
       backerCount: f.properties.backerCount,
       createdAt: f.properties.createdAt,
+      place: locality(f.properties.address),
     })),
     { recentRainMm: rain },
   );
@@ -72,7 +79,7 @@ export async function refreshIncidentsAround(lat: number, lng: number, km = 3): 
     const { data: id, error } = await db.rpc("upsert_incident", {
       p_signature: inc.signature,
       p_kind: "cluster",
-      p_title: words?.title ?? inc.title,
+      p_title: inc.title, // a plain, consistent title; the model only writes the explanation
       p_root_cause: inc.rootCause.cause,
       p_graph: {
         ...inc.rootCause.graph,
@@ -101,7 +108,7 @@ export async function refreshIncidentsAround(lat: number, lng: number, km = 3): 
     }
     ids.push(id as number);
     if (!existing) {
-      for (const issueId of inc.issueIds) await db.from("issue_events").insert({ issue_id: issueId, kind: "incident_linked", detail: { incident_id: id, title: words?.title ?? inc.title } });
+      for (const issueId of inc.issueIds) await db.from("issue_events").insert({ issue_id: issueId, kind: "incident_linked", detail: { incident_id: id, title: inc.title } });
     }
   }
 
